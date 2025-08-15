@@ -1,0 +1,15 @@
+# Ignore build output and user-specific files
+bin/
+obj/
+*.user
+*.suo
+*.vs
+.vscode/
+*.log
+*.tmp
+*.cache
+*.db
+*.DS_Store
+Thumbs.db
+.env
+appsettings.*.json
