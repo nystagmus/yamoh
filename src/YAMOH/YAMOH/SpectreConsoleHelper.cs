@@ -6,8 +6,6 @@ namespace YAMOH;
 
 public static class SpectreConsoleHelper
 {
-    public const int FixedWidth = 80;
-
     public static void PrintSplashScreen()
     {
         var appName = "YAMOH";
@@ -38,9 +36,8 @@ public static class SpectreConsoleHelper
         {
             Padding = new Padding(1, 1, 1, 1),
             Border = BoxBorder.Rounded,
-            Width = FixedWidth,
         };
-        return panel;
+        return panel.Expand();
     }
 
     public static Panel CreatePanel(string content)
@@ -49,9 +46,8 @@ public static class SpectreConsoleHelper
         {
             Padding = new Padding(1, 1, 1, 1),
             Border = BoxBorder.Rounded,
-            Width = FixedWidth,
         };
-        return panel;
+        return panel.Expand();
     }
 
     public static Table CreateTable()
@@ -60,6 +56,6 @@ public static class SpectreConsoleHelper
         {
             Border = TableBorder.Rounded
         };
-        return table;
+        return table.Expand();
     }
 }
