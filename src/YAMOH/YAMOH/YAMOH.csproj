@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <InvariantGlobalization>true</InvariantGlobalization>
+        <UserSecretsId>0068d28c-09ca-48a2-be46-75ede89b213c</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,6 +19,12 @@
       <PackageReference Include="Spectre.Console" Version="0.50.0" />
       <PackageReference Include="System.CommandLine" Version="2.0.0-beta7.25380.108" />
       <PackageReference Include="vertical-spectreconsolelogger" Version="0.10.1-dev.20241201.35" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="appsettings.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>
