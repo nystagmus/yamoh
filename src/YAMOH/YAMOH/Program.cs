@@ -19,6 +19,8 @@ builder.Logging.AddSerilog(new LoggerConfiguration()
 
 builder.Services.Configure<YamohConfiguration>(builder.Configuration.GetSection(YamohConfiguration.Position));
 
+builder.Services.AddHttpClient();
+
 var host = builder.Build();
 
 // Validate and print configuration
