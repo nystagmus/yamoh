@@ -1,4 +1,5 @@
 ﻿using Ardalis.GuardClauses;
+using Spectre.Console;
 
 namespace YAMOH;
 
@@ -58,8 +59,8 @@ public class YamohConfiguration
         var fontFullPath = Path.IsPathRooted(FontPath)
             ? FontPath
             : Path.GetFullPath(FontPath);
-        if (!File.Exists(fontFullPath))
-            throw new FileNotFoundException($"FontPath file not found: {fontFullPath}");
+        if (!Directory.Exists(fontFullPath))
+            throw new FileNotFoundException($"FontPath path not found: {fontFullPath}");
 
         // Validate numeric values
         Guard.Against.OutOfRange(FontTransparency, nameof(FontTransparency), 0, 256);
@@ -81,5 +82,24 @@ public class YamohConfiguration
         // Accept both absolute and relative paths, but check for invalid path chars
         if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
             throw new ArgumentException($"{propertyName} contains invalid path characters.");
+    }
+
+    public void PrintConfigTable()
+    {
+        var table = SpectreConsoleHelper.CreateTable();
+        table.AddColumn("Property");
+        table.AddColumn("Value");
+
+        var props = this.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        foreach (var prop in props)
+        {
+            var value = prop.GetValue(this)?.ToString() ?? "<null>";
+            table.AddRow(prop.Name, value);
+        }
+
+        var panel = SpectreConsoleHelper.CreatePanel(table.Expand());
+
+        panel.Header = new PanelHeader("YAMOW Configuration Used", Justify.Center);
+        AnsiConsole.Write(panel);
     }
 }
