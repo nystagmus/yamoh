@@ -10,8 +10,6 @@ public class YamohConfiguration
     public string PlexUrl { get; set; } = string.Empty;
     public string PlexToken { get; set; } = string.Empty;
     public string MaintainerrUrl { get; set; } = string.Empty;
-    public string ImageSavePath { get; set; } = string.Empty;
-    public string OriginalImagePath { get; set; } = string.Empty;
     public string TempImagePath { get; set; } = string.Empty;
     public bool UseAssetMode { get; set; } = true;
     public string AssetBasePath { get; set; } = string.Empty;
@@ -42,16 +40,12 @@ public class YamohConfiguration
         Guard.Against.NullOrWhiteSpace(PlexUrl, nameof(PlexUrl), "PlexUrl must be provided.");
         Guard.Against.NullOrWhiteSpace(PlexToken, nameof(PlexToken), "PlexToken must be provided.");
         Guard.Against.NullOrWhiteSpace(MaintainerrUrl, nameof(MaintainerrUrl), "MaintainerrUrl must be provided.");
-        Guard.Against.NullOrWhiteSpace(ImageSavePath, nameof(ImageSavePath), "ImageSavePath must be provided.");
         Guard.Against.NullOrWhiteSpace(FontPath, nameof(FontPath), "FontPath must be provided.");
         Guard.Against.NullOrWhiteSpace(AssetBasePath, nameof(AssetBasePath), "AssetBasePath must be provided.");
-        Guard.Against.NullOrWhiteSpace(OriginalImagePath, nameof(OriginalImagePath), "OriginalImagePath must be provided.");
         Guard.Against.NullOrWhiteSpace(TempImagePath, nameof(TempImagePath), "TempImagePath must be provided.");
 
         // Validate path formats (allow absolute or relative)
-        ValidatePathFormat(ImageSavePath, nameof(ImageSavePath));
         ValidatePathFormat(AssetBasePath, nameof(AssetBasePath));
-        ValidatePathFormat(OriginalImagePath, nameof(OriginalImagePath));
         ValidatePathFormat(TempImagePath, nameof(TempImagePath));
         ValidatePathFormat(FontPath, nameof(FontPath));
 

@@ -14,6 +14,7 @@ using YAMOH;
 using YAMOH.Clients;
 using YAMOH.Commands;
 using YAMOH.Infrastructure;
+using YAMOH.Models;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -32,6 +33,9 @@ builder.Services.Configure<YamohConfiguration>(builder.Configuration.GetSection(
 builder.Services.AddHttpClient();
 builder.Services.AddTransient<CommandFactory>();
 builder.Services.AddTransient<MaintainerrClient>();
+builder.Services.AddTransient<PlexClient>();
+builder.Services.AddTransient<OverlayHelper>();
+builder.Services.AddSingleton<OverlayStateManager>();
 builder.Services.AddAllTypesOf<IYamohCommand>(Assembly.GetExecutingAssembly());
 
 builder.Services.AddTransient<PlexAPI>(provider =>
