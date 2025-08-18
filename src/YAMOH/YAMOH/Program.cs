@@ -2,9 +2,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Runtime.InteropServices.ComTypes;
+using LukeHagar.PlexAPI.SDK;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Spectre.Console;
 using Vertical.SpectreLogger;
@@ -26,16 +28,34 @@ builder.Logging.AddSerilog(new LoggerConfiguration()
 
 builder.Services.Configure<YamohConfiguration>(builder.Configuration.GetSection(YamohConfiguration.Position));
 
+// Services
 builder.Services.AddHttpClient();
+builder.Services.AddTransient<CommandFactory>();
 builder.Services.AddTransient<MaintainerrClient>();
-builder.Services.AddAllTypesOf<IYamohCommandBase>(Assembly.GetExecutingAssembly(), ServiceLifetime.Scoped);
+builder.Services.AddAllTypesOf<IYamohCommand>(Assembly.GetExecutingAssembly());
+
+builder.Services.AddTransient<PlexAPI>(provider =>
+{
+    var options = provider.GetService<IOptions<YamohConfiguration>>();
+
+    if (options == null)
+    {
+        throw new Exception("Yamoh configuration not found");
+    }
+
+    var api = new PlexAPI(serverUrl: options.Value.PlexUrl, accessToken:options.Value.PlexToken);
+    api.SDKConfiguration.Hooks.RegisterBeforeRequestHook(new PlexApiBeforeRequestHook());
+    return api;
+});
 
 var host = builder.Build();
+
 ServiceLocator.SetServiceProvider(host.Services);
+
 // Validate and print configuration
 SpectreConsoleHelper.PrintSplashScreen();
 
-var config = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<YAMOH.YamohConfiguration>>().Value;
+var config = host.Services.GetRequiredService<IOptions<YamohConfiguration>>().Value;
 try
 {
     config.AssertIsValid();
@@ -43,18 +63,23 @@ try
 }
 catch (Exception ex)
 {
-    Spectre.Console.AnsiConsole.MarkupLine($"[red]Configuration error: {ex.Message}[/]");
+    AnsiConsole.MarkupLine($"[red]Configuration error: {ex.Message}[/]");
     return 0;
 }
 
 var rootCommand = new RootCommand("Yet Another Maintainerr Overlay Helper");
 
-CreateMaintainerrCommand(rootCommand);
+var cliBuilder = host.Services.GetRequiredService<CommandFactory>();
+
+foreach (var command in cliBuilder.GenerateCommandTree())
+{
+    rootCommand.Subcommands.Add(command);
+}
 
 rootCommand.SetAction(async (_, cancellationToken) =>
 {
     using var scope = host.Services.CreateScope();
-    var commands = scope.ServiceProvider.GetServices<IYamohCommandBase>().ToList();
+    var commands = scope.ServiceProvider.GetServices<IYamohCommand>().ToList();
     var commandNames = commands.Select(c => c.CommandName).ToList();
 
     // Prompt user
@@ -74,7 +99,7 @@ rootCommand.SetAction(async (_, cancellationToken) =>
     try
     {
         AnsiConsole.MarkupLine($"[green]Running '{selectedCommand.CommandDescription}'[/]");
-        await selectedCommand.Run(cancellationToken: cancellationToken);
+        await selectedCommand.RunAsync(cancellationToken: cancellationToken);
     }
     catch (ValidationException vex)
     {
@@ -92,15 +117,6 @@ rootCommand.SetAction(async (_, cancellationToken) =>
 
 var parseResult = rootCommand.Parse(args);
 return await parseResult.InvokeAsync();
-
-void CreateMaintainerrCommand(Command parentCommand)
-{
-    var maintainerrSubCommand = new Command("maintainerr", "Commands to work with Maintainerr directly");
-
-    maintainerrSubCommand.Subcommands.Add(GetMaintainerrCollectionsCommand.CreateCommand());
-
-    parentCommand.Add(maintainerrSubCommand);
-}
 
 public static class ServiceLocator
 {

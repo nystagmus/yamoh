@@ -2,11 +2,11 @@ using System.CommandLine;
 
 namespace YAMOH.Commands;
 
-public interface IYamohCommandBase
+public interface IYamohCommand
 {
     string CommandName { get; }
 
     string CommandDescription { get; }
 
-    Task Run(CancellationToken cancellationToken = default);
+    Task RunAsync(CancellationToken cancellationToken = default);
 }

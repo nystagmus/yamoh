@@ -8,31 +8,12 @@ namespace YAMOH.Commands;
 
 public class GetMaintainerrCollectionsCommand(
     MaintainerrClient maintainerrClient,
-    ILogger<GetMaintainerrCollectionsCommand> logger) : IYamohCommandBase
+    ILogger<GetMaintainerrCollectionsCommand> logger) : IYamohCommand
 {
-    // public string CommandName => "get-maintainerr-collections";
-    // public string CommandDescription => "Fetch the Maintainerr collections and print the info on the command line.";
-    private const string Name = "get-maintainerr-collections";
-    private const string Description = "Fetch the Maintainerr collections and print the info on the command line.";
-    public string CommandName => Name;
-    public string CommandDescription => Description;
+    public string CommandName => "get-maintainerr-collections";
+    public string CommandDescription => "Fetch the Maintainerr collections and print the info on the command line.";
 
-    public static Command CreateCommand()
-    {
-        var command = new Command(Name, Description);
-
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            var maintainerr = ServiceLocator.ServiceProvider.GetRequiredService<MaintainerrClient>();
-            var logger = ServiceLocator.ServiceProvider.GetRequiredService<ILogger<GetMaintainerrCollectionsCommand>>();
-
-            var maintainerrCollectionsCommand = new GetMaintainerrCollectionsCommand(maintainerr, logger);
-            await maintainerrCollectionsCommand.Run(cancellationToken);
-        });
-        return command;
-    }
-
-    public async Task Run(CancellationToken cancellationToken = default)
+    public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         try
         {
