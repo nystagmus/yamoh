@@ -7,5 +7,6 @@ public class OverlayManagerItem
     public required string LibraryName { get; set; }
     public required string LibraryPath { get; set; }
     public required string MediaFilePath { get; set; }
-    public required DateTimeOffset ExpirationDate { get; set; }
+    public bool HasExpiration { get; set; }
+    public DateTimeOffset ExpirationDate { get; set; }
 }

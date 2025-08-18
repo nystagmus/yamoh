@@ -58,6 +58,8 @@ public class OverlayManagerCommand(
 
         foreach (var collection in collections)
         {
+            if (!collection.IsActive) return;
+
             switch (collection.Type)
             {
                 case (int)MaintainerrPlexDataType.Movies:
@@ -99,17 +101,17 @@ public class OverlayManagerCommand(
                 {
                     RatingKey = plexId.ToString()
                 };
-                var metadata = await plexApi.Library.GetMediaMetaDataAsync(request);
+                var metadataResponse = await plexApi.Library.GetMediaMetaDataAsync(request);
 
-                if (metadata.StatusCode != (int)HttpStatusCode.OK)
+                if (metadataResponse.StatusCode != (int)HttpStatusCode.OK)
                 {
                     logger.LogInformation(
                         "Skipping Plex ID {PlexId} because Metadata response was status code: {StatusCode}", plexId,
-                        metadata.StatusCode);
+                        metadataResponse.StatusCode);
                     continue;
                 }
 
-                var plexMeta = Guard.Against.Null(metadata.Object?.MediaContainer,
+                var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
 
                 var mediaFilePath = Guard.Against.Null(plexMeta.Metadata[0].Media?[0].Part?[0].File,
@@ -150,7 +152,6 @@ public class OverlayManagerCommand(
                     "Found Metadata for Plex ID: {PlexId}, Library: {LibraryName}, Library Folder: {@LibraryFolder}, Media File: {MediaFile}",
                     plexId, libraryName, libraryPath, mediaFilePath);
 
-                var addDate = new DateTimeOffset(maintainerrItem.AddDate);
 
                 var item = new OverlayManagerItem()
                 {
@@ -159,8 +160,14 @@ public class OverlayManagerCommand(
                     LibraryName = libraryName,
                     LibraryPath = libraryPath,
                     MediaFilePath = mediaFilePath,
-                    ExpirationDate = addDate.AddDays(deleteAfterDays)
                 };
+
+                if (deleteAfterDays > 0)
+                {
+                    var addDate = new DateTimeOffset(maintainerrItem.AddDate);
+                    item.HasExpiration = true;
+                    item.ExpirationDate = addDate.AddDays(deleteAfterDays);
+                }
                 items.Add(item);
             }
             catch (Exception ex)
@@ -172,14 +179,332 @@ public class OverlayManagerCommand(
         return items;
     }
 
-    private Task<IEnumerable<OverlayManagerItem>> GatherShowCollectionItems(MaintainerrCollection collection)
-        => throw new NotImplementedException();
+    private async Task<IEnumerable<OverlayManagerItem>> GatherShowCollectionItems(MaintainerrCollection collection)
+    {
+        logger.LogInformation("Processing TV Show collection: {Collection}", collection.Title);
+        var items = new List<OverlayManagerItem>();
+        var deleteAfterDays = collection.DeleteAfterDays;
+
+        if (collection.Media == null || collection.Media.Count == 0)
+        {
+            logger.LogInformation("No media found for collection: {Collection}", collection.Title);
+            return items;
+        }
+
+        foreach (var maintainerrItem in collection.Media)
+        {
+            var plexId = maintainerrItem.PlexId;
+            logger.LogInformation("Fetching Plex Metadata for {PlexId}", plexId);
+
+            try
+            {
+                var request = new GetMediaMetaDataRequest()
+                {
+                    RatingKey = plexId.ToString()
+                };
+                var metadataResponse = await plexApi.Library.GetMediaMetaDataAsync(request);
+
+                if (metadataResponse.StatusCode != (int)HttpStatusCode.OK)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because Metadata response was status code: {StatusCode}", plexId,
+                        metadataResponse.StatusCode);
+                    continue;
+                }
+
+                var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
+                    nameof(GetMediaMetaDataResponse.Object));
+
+                var showPath = Guard.Against.Null(metadataResponse.Object.MediaContainer.Metadata[0].Location?[0].Path);
+
+                var librarySectionId = Guard.Against.Null(plexMeta.Metadata[0].LibrarySectionID,
+                    nameof(GetMediaMetaDataMetadata.LibrarySectionID));
+                var libraries = await GetAllLibraries();
+
+                var directories = Guard.Against.Null(libraries.Object?.MediaContainer?.Directory,
+                    nameof(GetAllLibrariesMediaContainer.Directory));
+
+                var sectionPaths = directories
+                    .FirstOrDefault(x => x.Key == librarySectionId.ToString())?.Location.Select(p => p.Path)
+                    .ToList();
+
+                if (sectionPaths is null || sectionPaths.Count == 0)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because library directory path could not be determined from PlexAPI",
+                        plexId);
+                    continue;
+                }
+
+                var libraryPath = sectionPaths.FirstOrDefault(x => showPath.StartsWith(x));
+
+                if (libraryPath is null)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because library directory path could not be determined", plexId);
+                    continue;
+                }
+
+                var libraryName = Guard.Against.Null(plexMeta.LibrarySectionTitle,
+                    nameof(GetMediaMetaDataMediaContainer.LibrarySectionTitle));
+
+                logger.LogInformation(
+                    "Found Metadata for Plex ID: {PlexId}, Library: {LibraryName}, Library Folder: {@LibraryFolder}, Media File: {MediaFile}",
+                    plexId, libraryName, libraryPath, showPath);
+
+                var item = new OverlayManagerItem()
+                {
+                    PlexId = plexId,
+                    DataType = MaintainerrPlexDataType.Shows,
+                    LibraryName = libraryName,
+                    LibraryPath = libraryPath,
+                    MediaFilePath = showPath,
+                };
+
+                if (deleteAfterDays > 0)
+                {
+                    var addDate = new DateTimeOffset(maintainerrItem.AddDate);
+                    item.HasExpiration = true;
+                    item.ExpirationDate = addDate.AddDays(deleteAfterDays);
+                }
+                items.Add(item);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Skipping {PlexId} due to error", plexId);
+            }
+        }
+
+        return items;
+    }
 
     private async Task<IEnumerable<OverlayManagerItem>> GatherSeasonCollectionItems(MaintainerrCollection collection)
     {
-        return null;
+        logger.LogInformation("Processing TV Season collection: {Collection}", collection.Title);
+        var items = new List<OverlayManagerItem>();
+        var deleteAfterDays = collection.DeleteAfterDays;
+
+        if (collection.Media == null || collection.Media.Count == 0)
+        {
+            logger.LogInformation("No media found for collection: {Collection}", collection.Title);
+            return items;
+        }
+
+        foreach (var maintainerrItem in collection.Media)
+        {
+            var plexId = maintainerrItem.PlexId;
+            logger.LogInformation("Fetching Plex Metadata for {PlexId}", plexId);
+
+            try
+            {
+                var request = new GetMediaMetaDataRequest()
+                {
+                    RatingKey = plexId.ToString()
+                };
+                var metadata = await plexApi.Library.GetMediaMetaDataAsync(request);
+
+                if (metadata.StatusCode != (int)HttpStatusCode.OK)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because Metadata response was status code: {StatusCode}", plexId,
+                        metadata.StatusCode);
+                    continue;
+                }
+
+                var plexMeta = Guard.Against.Null(metadata.Object?.MediaContainer,
+                    nameof(GetMediaMetaDataResponse.Object));
+
+                var parentPlexId = Guard.Against.Null(plexMeta.Metadata[0].ParentRatingKey);
+
+                var parentRequest = new GetMediaMetaDataRequest()
+                {
+                    RatingKey = parentPlexId
+                };
+                var parentMetadataResponse = await plexApi.Library.GetMediaMetaDataAsync(parentRequest);
+                if (parentMetadataResponse.StatusCode != (int)HttpStatusCode.OK)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because Metadata response was status code: {StatusCode}", plexId,
+                        metadata.StatusCode);
+                    continue;
+                }
+
+                var parentMetadata = Guard.Against.Null(parentMetadataResponse.Object?.MediaContainer);
+                var showPath = Guard.Against.Null(parentMetadata.Metadata[0].Location?[0].Path);
+
+                var librarySectionId = Guard.Against.Null(plexMeta.Metadata[0].LibrarySectionID,
+                    nameof(GetMediaMetaDataMetadata.LibrarySectionID));
+                var libraries = await GetAllLibraries();
+
+                var directories = Guard.Against.Null(libraries.Object?.MediaContainer?.Directory,
+                    nameof(GetAllLibrariesMediaContainer.Directory));
+
+                var sectionPaths = directories
+                    .FirstOrDefault(x => x.Key == librarySectionId.ToString())?.Location.Select(p => p.Path)
+                    .ToList();
+
+                if (sectionPaths is null || sectionPaths.Count == 0)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because library directory path could not be determined from PlexAPI",
+                        plexId);
+                    continue;
+                }
+
+                var libraryPath = sectionPaths.FirstOrDefault(x => showPath.StartsWith(x));
+
+                if (libraryPath is null)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because library directory path could not be determined", plexId);
+                    continue;
+                }
+
+                var libraryName = Guard.Against.Null(plexMeta.LibrarySectionTitle,
+                    nameof(GetMediaMetaDataMediaContainer.LibrarySectionTitle));
+
+                logger.LogInformation(
+                    "Found Metadata for Plex ID: {PlexId}, Library: {LibraryName}, Library Folder: {@LibraryFolder}, Media File: {MediaFile}",
+                    plexId, libraryName, libraryPath, showPath);
+
+                var item = new OverlayManagerItem()
+                {
+                    PlexId = plexId,
+                    DataType = MaintainerrPlexDataType.Seasons,
+                    LibraryName = libraryName,
+                    LibraryPath = libraryPath,
+                    MediaFilePath = showPath,
+                };
+
+                if (deleteAfterDays > 0)
+                {
+                    var addDate = new DateTimeOffset(maintainerrItem.AddDate);
+                    item.HasExpiration = true;
+                    item.ExpirationDate = addDate.AddDays(deleteAfterDays);
+                }
+                items.Add(item);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Skipping {PlexId} due to error", plexId);
+            }
+        }
+
+        return items;
     }
 
-    private Task<IEnumerable<OverlayManagerItem>> GatherEpisodeCollectionItems(MaintainerrCollection collection)
-        => throw new NotImplementedException();
+    private async Task<IEnumerable<OverlayManagerItem>> GatherEpisodeCollectionItems(MaintainerrCollection collection)
+    {
+        logger.LogInformation("Processing Episodes collection: {Collection}", collection.Title);
+        var items = new List<OverlayManagerItem>();
+        var deleteAfterDays = collection.DeleteAfterDays;
+
+        if (collection.Media == null || collection.Media.Count == 0)
+        {
+            logger.LogInformation("No media found for collection: {Collection}", collection.Title);
+            return items;
+        }
+
+        foreach (var maintainerrItem in collection.Media)
+        {
+            var plexId = maintainerrItem.PlexId;
+            logger.LogInformation("Fetching Plex Metadata for {PlexId}", plexId);
+
+            try
+            {
+                var request = new GetMediaMetaDataRequest()
+                {
+                    RatingKey = plexId.ToString()
+                };
+                var metadata = await plexApi.Library.GetMediaMetaDataAsync(request);
+
+                if (metadata.StatusCode != (int)HttpStatusCode.OK)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because Metadata response was status code: {StatusCode}", plexId,
+                        metadata.StatusCode);
+                    continue;
+                }
+
+                var plexMeta = Guard.Against.Null(metadata.Object?.MediaContainer,
+                    nameof(GetMediaMetaDataResponse.Object));
+
+                var grandParentPlexId = Guard.Against.Null(plexMeta.Metadata[0].GrandparentRatingKey);
+
+                var grandparentRequest = new GetMediaMetaDataRequest()
+                {
+                    RatingKey = grandParentPlexId
+                };
+                var grandparentMetadataResponse = await plexApi.Library.GetMediaMetaDataAsync(grandparentRequest);
+                if (grandparentMetadataResponse.StatusCode != (int)HttpStatusCode.OK)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because Metadata response was status code: {StatusCode}", plexId,
+                        metadata.StatusCode);
+                    continue;
+                }
+
+                var grandparentMetadata = Guard.Against.Null(grandparentMetadataResponse.Object?.MediaContainer);
+                var showPath = Guard.Against.Null(grandparentMetadata.Metadata[0].Location?[0].Path);
+
+                var librarySectionId = Guard.Against.Null(plexMeta.Metadata[0].LibrarySectionID,
+                    nameof(GetMediaMetaDataMetadata.LibrarySectionID));
+                var libraries = await GetAllLibraries();
+
+                var directories = Guard.Against.Null(libraries.Object?.MediaContainer?.Directory,
+                    nameof(GetAllLibrariesMediaContainer.Directory));
+
+                var sectionPaths = directories
+                    .FirstOrDefault(x => x.Key == librarySectionId.ToString())?.Location.Select(p => p.Path)
+                    .ToList();
+
+                if (sectionPaths is null || sectionPaths.Count == 0)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because library directory path could not be determined from PlexAPI",
+                        plexId);
+                    continue;
+                }
+
+                var libraryPath = sectionPaths.FirstOrDefault(x => showPath.StartsWith(x));
+
+                if (libraryPath is null)
+                {
+                    logger.LogInformation(
+                        "Skipping Plex ID {PlexId} because library directory path could not be determined", plexId);
+                    continue;
+                }
+
+                var libraryName = Guard.Against.Null(plexMeta.LibrarySectionTitle,
+                    nameof(GetMediaMetaDataMediaContainer.LibrarySectionTitle));
+
+                logger.LogInformation(
+                    "Found Metadata for Plex ID: {PlexId}, Library: {LibraryName}, Library Folder: {@LibraryFolder}, Media File: {MediaFile}",
+                    plexId, libraryName, libraryPath, showPath);
+
+                var item = new OverlayManagerItem()
+                {
+                    PlexId = plexId,
+                    DataType = MaintainerrPlexDataType.Seasons,
+                    LibraryName = libraryName,
+                    LibraryPath = libraryPath,
+                    MediaFilePath = showPath,
+                };
+
+                if (deleteAfterDays > 0)
+                {
+                    var addDate = new DateTimeOffset(maintainerrItem.AddDate);
+                    item.HasExpiration = true;
+                    item.ExpirationDate = addDate.AddDays(deleteAfterDays);
+                }
+                items.Add(item);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Skipping {PlexId} due to error", plexId);
+            }
+        }
+
+        return items;
+    }
 }
