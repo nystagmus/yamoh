@@ -13,6 +13,8 @@
         <PackageReference Include="Ardalis.GuardClauses" Version="5.0.0"/>
         <PackageReference Include="LiteDB" Version="5.0.21" />
         <PackageReference Include="LukeHagar.PlexAPI.SDK" Version="0.16.1"/>
+        <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.8.0" />
+        <PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.8" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8"/>
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
         <PackageReference Include="Serilog" Version="4.3.0"/>

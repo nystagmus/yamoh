@@ -16,10 +16,10 @@ public class YamohConfiguration
     public string FontPath { get; set; } = "Fonts";
     public string FontName { get; set; } = "AvenirNextLTPro-Bold";
     public string FontColor { get; set; } = "#ffffff";
-    public int FontTransparency { get; set; } = 256;
+    public ushort FontTransparency { get; set; } = 256;
     public string BackColor { get; set; } = "#B20710";
-    public int BackTransparency { get; set; } = 256;
-    public int FontSize { get; set; } = 65;
+    public ushort BackTransparency { get; set; } = 256;
+    public double FontSize { get; set; } = 65d;
     public int Padding { get; set; } = 15;
     public int BackRadius { get; set; } = 20;
     public int HorizontalOffset { get; set; } = 0;

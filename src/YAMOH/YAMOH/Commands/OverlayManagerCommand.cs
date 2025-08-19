@@ -17,6 +17,7 @@ public class OverlayManagerCommand(
     MaintainerrClient maintainerrClient,
     PlexClient plexClient,
     PlexAPI plexApi,
+    OverlayHelper overlayHelper,
     OverlayStateManager overlayStateManager) : IYamohCommand
 {
     private GetAllLibrariesResponse? _allLibraries = null;
@@ -125,7 +126,21 @@ public class OverlayManagerCommand(
 
                     }
                     // Apply overlay (placeholder for actual overlay logic)
-                    // ... ApplyOverlay(item.MediaFilePath) ...
+                    var formattedDate = item.ExpirationDate.ToString(options.Value.DateFormat);
+                    var overlayText = $"{options.Value.OverlayText} {formattedDate}";
+                    var result = overlayHelper.AddOverlay(item.PlexId, mediaFileFullName, overlayText);
+
+                    if (result is { Exists: true })
+                    {
+                        File.Copy(result.FullName, mediaFileFullName, overwrite: true);
+                        File.Delete(result.FullName);
+                        logger.LogInformation("Applied overlay for {ItemPlexId}", item.PlexId);
+                    }
+                    else
+                    {
+                        logger.LogInformation("Could not apply overlay for {ItemPlexId}", item.PlexId);
+                    }
+
                     // overlayStateManager.Upsert(new OverlayStateItem
                     // {
                     //     PlexId = item.PlexId.ToString(),
@@ -308,7 +323,7 @@ public class OverlayManagerCommand(
                     LibraryName = libraryName,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
-                    MediaFileName = string.Join("Season", seasonIndex)
+                    MediaFileName = $"Season{seasonIndex}"
                 };
             });
     }
@@ -369,7 +384,7 @@ public class OverlayManagerCommand(
                     LibraryName = libraryName,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
-                    MediaFileName = string.Join("S", seasonIndex, "E", episodeIndex)
+                    MediaFileName = $"S{seasonIndex}E{episodeIndex}"
                 };
             });
     }
