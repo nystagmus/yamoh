@@ -16,9 +16,9 @@ public class YamohConfiguration
     public string FontPath { get; set; } = "Fonts";
     public string FontName { get; set; } = "AvenirNextLTPro-Bold";
     public string FontColor { get; set; } = "#ffffff";
-    public ushort FontTransparency { get; set; } = 256;
+    public double FontTransparency { get; set; } = 1.00;
     public string BackColor { get; set; } = "#B20710";
-    public ushort BackTransparency { get; set; } = 256;
+    public double BackTransparency { get; set; } = 1.00;
     public double FontSize { get; set; } = 65d;
     public int Padding { get; set; } = 15;
     public int BackRadius { get; set; } = 20;
@@ -26,8 +26,8 @@ public class YamohConfiguration
     public string HorizontalAlign { get; set; } = "center";
     public int VerticalOffset { get; set; } = 0;
     public string VerticalAlign { get; set; } = "bottom";
-    public int BackWidth { get; set; } = 1920;
-    public int BackHeight { get; set; } = 100;
+    public uint BackWidth { get; set; } = 1920;
+    public uint BackHeight { get; set; } = 100;
     public string DateFormat { get; set; } = "MMM d";
     public string OverlayText { get; set; } = "Leaving";
     public int RunInterval { get; set; } = 480;
@@ -57,15 +57,15 @@ public class YamohConfiguration
             throw new FileNotFoundException($"FontPath path not found: {fontFullPath}");
 
         // Validate numeric values
-        Guard.Against.OutOfRange(FontTransparency, nameof(FontTransparency), 0, 256);
-        Guard.Against.OutOfRange(BackTransparency, nameof(BackTransparency), 0, 256);
+        Guard.Against.OutOfRange(FontTransparency, nameof(FontTransparency), 0, 100);
+        Guard.Against.OutOfRange(BackTransparency, nameof(BackTransparency), 0, 100);
         Guard.Against.OutOfRange(FontSize, nameof(FontSize), 1, 200);
         Guard.Against.OutOfRange(Padding, nameof(Padding), 0, 100);
         Guard.Against.OutOfRange(BackRadius, nameof(BackRadius), 0, 200);
         Guard.Against.OutOfRange(HorizontalOffset, nameof(HorizontalOffset), -1000, 1000);
         Guard.Against.OutOfRange(VerticalOffset, nameof(VerticalOffset), -1000, 1000);
-        Guard.Against.OutOfRange(BackWidth, nameof(BackWidth), 0, 10000);
-        Guard.Against.OutOfRange(BackHeight, nameof(BackHeight), 0, 10000);
+        Guard.Against.OutOfRange(BackWidth, nameof(BackWidth), (uint)0, (uint)10000);
+        Guard.Against.OutOfRange(BackHeight, nameof(BackHeight), (uint)0, (uint)10000);
         Guard.Against.OutOfRange(RunInterval, nameof(RunInterval), 1, 10000);
 
         return true;

@@ -22,10 +22,10 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
         string? horizontalAlign = null,
         int? verticalOffset = null,
         string? verticalAlign = null,
-        int? backWidth = null,
-        int? backHeight = null,
-        ushort? textTransparency = null,
-        ushort? backTransparency = null
+        uint? backWidth = null,
+        uint? backHeight = null,
+        double? fontTransparency = null,
+        double? backTransparency = null
     )
     {
         // Get config defaults
@@ -43,7 +43,7 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
         verticalAlign ??= cfg.VerticalAlign;
         backWidth ??= cfg.BackWidth;
         backHeight ??= cfg.BackHeight;
-        textTransparency ??= cfg.FontTransparency;
+        fontTransparency ??= cfg.FontTransparency;
         backTransparency ??= cfg.BackTransparency;
 
         // Load image
@@ -71,10 +71,11 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             var scaledHorizontalOffset = (int)(horizontalOffset.Value * scaleFactor);
             var scaledVerticalOffset = (int)(verticalOffset.Value * scaleFactor);
 
-            // todo: figure out the best way to handle "percentage" transparency
-            // todo: also we're not handling it correctly if width and height are set in the options
-            var backMagickColor = new MagickColor(backColor) { A = 45874 }; //{ A = backTransparency.Value };
-            var fontMagickColor = new MagickColor(fontColor) { A = 45874 }; //{ A = textTransparency.Value };
+            // transparency
+            var backAlpha = (ushort)(backTransparency * ushort.MaxValue)!;
+            var fontAlpha = (ushort)(fontTransparency * ushort.MaxValue)!;
+            var backMagickColor = new MagickColor(backColor) { A = backAlpha }; //{ A = backTransparency.Value };
+            var fontMagickColor = new MagickColor(fontColor) { A = fontAlpha }; //{ A = textTransparency.Value };
 
             // Measure text
             var metrics = new Drawables()
@@ -91,19 +92,23 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             }
 
             var scaledBackWidth = backWidth > 0
-                ? (int)(backWidth.Value * scaleFactor)
-                : (int)(metrics.TextWidth + scaledPadding * 2);
+                ? (uint)(backWidth.Value * scaleFactor)
+                : (uint)(metrics.TextWidth + scaledPadding * 2);
+            if (scaledBackWidth > imageWidth) scaledBackWidth = imageWidth;
+
+            // Adjust vertical padding for text glyphs below baseline
             var scaledPaddingY = scaledPadding + Math.Abs(metrics.Descent);
 
             var scaledBackHeight = backHeight > 0
-                ? (int)(backHeight.Value * scaleFactor)
-                : (int)(metrics.Ascent + scaledPaddingY * 2);
+                ? (uint)(backHeight.Value * scaleFactor)
+                : (uint)(metrics.Ascent + scaledPaddingY * 2);
+            if (scaledBackHeight > imageHeight) scaledBackHeight = imageHeight;
 
             // Alignment
             var x = horizontalAlign switch
             {
                 "right" => imageWidth - scaledBackWidth - scaledHorizontalOffset,
-                "center" => (imageWidth - scaledBackWidth) / 2,
+                "center" => (imageWidth - scaledBackWidth) / 2 + scaledHorizontalOffset,
                 "left" => scaledHorizontalOffset,
                 _ => imageWidth - scaledBackWidth - scaledHorizontalOffset
             };
@@ -111,19 +116,35 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             var y = verticalAlign switch
             {
                 "bottom" => imageHeight - scaledBackHeight - scaledVerticalOffset,
-                "center" => (imageHeight - scaledBackHeight) / 2,
+                "center" => (imageHeight - scaledBackHeight) / 2 + scaledVerticalOffset,
                 "top" => scaledVerticalOffset,
                 _ => imageHeight - scaledBackHeight - scaledVerticalOffset
             };
 
-            var textX = x + (scaledBackWidth / 2d) + scaledHorizontalOffset;
+            // always be visible
+            if (x <= 0) x = 0;
+            if (y <= 0) y = 0;
+
+            var textX = x + (scaledBackWidth / 2d);
             var textY = y + scaledBackHeight - scaledPaddingY;
 
             var drawables = new Drawables()
                 // Draw rounded rectangle background
                 .FillColor(backMagickColor)
-                .StrokeColor(backMagickColor)
-                .RoundRectangle(x, y, x + scaledBackWidth, y + scaledBackHeight, scaledBackRadius, scaledBackRadius)
+                .StrokeColor(backMagickColor);
+
+            // Handle zero radius
+            if (scaledBackRadius > 0)
+            {
+                drawables.RoundRectangle(x, y, x + scaledBackWidth, y + scaledBackHeight, scaledBackRadius,
+                    scaledBackRadius);
+            }
+            else
+            {
+                drawables.Rectangle(x, y, x + scaledBackWidth, y + scaledBackHeight);
+            }
+
+            drawables
                 // Draw Text
                 .FontPointSize(scaledFontSize)
                 .Font(fontFile)
