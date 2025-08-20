@@ -28,6 +28,8 @@ public class OverlayManagerCommand(
     public string CommandDescription =>
         "Main function of the application. Manage overlays based on Maintainerr status.";
 
+    private const string BackupFileNameSuffix = ".original";
+
     private async Task<GetAllLibrariesResponse> GetAllLibraries()
     {
         var libraries = _allLibraries ?? await plexApi.Library.GetAllLibrariesAsync();
@@ -51,6 +53,112 @@ public class OverlayManagerCommand(
             return;
         }
 
+        RestoreOriginalPosters(collections);
+
+        // For each collection, process overlays and update state
+        foreach (var collection in collections.Where(collection => collection.IsActive))
+        {
+            var items = collection.Type switch
+            {
+                (int)MaintainerrPlexDataType.Movies => await GatherMovieCollectionItems(collection),
+                (int)MaintainerrPlexDataType.Shows => await GatherShowCollectionItems(collection),
+                (int)MaintainerrPlexDataType.Seasons => await GatherSeasonCollectionItems(collection),
+                (int)MaintainerrPlexDataType.Episodes => await GatherEpisodeCollectionItems(collection),
+                _ => []
+            };
+
+            foreach (var item in items)
+            {
+                var state = overlayStateManager.GetByPlexId(item.PlexId.ToString());
+                state ??= new OverlayStateItem
+                {
+                    PlexId = item.PlexId.ToString(),
+                };
+
+                var shouldReapply = state.LastKnownExpirationDate.Date != item.ExpirationDate.Date;
+
+                if (shouldReapply || state is not { OverlayApplied: true } && !options.Value.ReapplyUpdates)
+                {
+                    state.MaintainerrCollectionId = collection.Id;
+                    state.LastChecked = DateTimeOffset.UtcNow;
+                    state.LastKnownExpirationDate = item.ExpirationDate;
+
+                    var assetBasePath = options.Value.AssetBasePath;
+                    // Save original poster (Asset Mode)
+                    var mediaFileFullPath = Path.GetFullPath(Path.Combine(assetBasePath, item.MediaFileRelativePath));
+                    var mediaFileFullName = Path.GetFullPath(Path.Combine(mediaFileFullPath, item.MediaFileName));
+                    var mediaFileDirectory = new DirectoryInfo(mediaFileFullPath);
+
+                    if (!mediaFileDirectory.Exists)
+                    {
+                        mediaFileDirectory.Create();
+                    }
+
+                    // Will get poster.original.jpg first, else poster.jpg if exists, or null
+                    var originalPoster = GetOriginalPoster(mediaFileDirectory, item);
+                    var originalPosterBackupFullName = mediaFileFullName + BackupFileNameSuffix;
+                    if (originalPoster is { Exists: true })
+                    {
+                        mediaFileFullName += originalPoster.Extension;
+                        originalPosterBackupFullName += originalPoster.Extension;
+                        if (!File.Exists(originalPosterBackupFullName))
+                            File.Copy(originalPoster.FullName, originalPosterBackupFullName, overwrite: true);
+                    }
+                    else
+                    {
+                        // download original poster from plex instead
+                        var plexPoster = await plexClient.DownloadPlexImageAsync(item.OriginalPlexPosterUrl);
+
+                        if (plexPoster is { Exists: true } && plexPoster.IsImageByExtension())
+                        {
+                            mediaFileFullName += plexPoster.Extension;
+                            originalPosterBackupFullName += plexPoster.Extension;
+                            File.Copy(plexPoster.FullName, mediaFileFullName, overwrite: true);
+                            File.Copy(plexPoster.FullName, originalPosterBackupFullName, overwrite: true);
+                            File.Delete(plexPoster.FullName);
+                        }
+                        else
+                        {
+                            logger.LogInformation("Could not find or fetch original poster for {PlexId}", item.PlexId);
+                            continue;
+                        }
+                    }
+
+                    state.PosterPath = mediaFileFullName;
+                    state.OriginalPosterPath = originalPosterBackupFullName;
+
+                    // Apply overlay
+                    var overlayText = GetOverlayText(item);
+
+                    var result = overlayHelper.AddOverlay(item.PlexId, mediaFileFullName, overlayText);
+
+                    if (result is { Exists: true })
+                    {
+                        File.Copy(result.FullName, mediaFileFullName, overwrite: true);
+                        File.Delete(result.FullName);
+                        state.OverlayApplied = true;
+                        state.PosterHash = null;
+                        logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}", item.PlexId);
+                    }
+                    else
+                    {
+                        logger.LogInformation("Could not apply overlay for {ItemPlexId}", item.PlexId);
+                        state.OverlayApplied = false;
+                    }
+                }
+                else
+                {
+                    // Already applied, update LastChecked
+                    state.LastChecked = DateTime.UtcNow;
+                }
+
+                overlayStateManager.Upsert(state);
+            }
+        }
+    }
+
+    private void RestoreOriginalPosters(List<MaintainerrCollection> collections)
+    {
         // Get all PlexIds currently in Maintainerr
         var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId.ToString()).ToHashSet();
 
@@ -69,106 +177,29 @@ public class OverlayManagerCommand(
                 logger.LogWarning("Original poster backup missing for PlexId {StateItemPlexId}", stateItem.PlexId);
             }
         }
-
-        // For each collection, process overlays and update state
-        foreach (var collection in collections.Where(collection => collection.IsActive))
-        {
-            var items = collection.Type switch
-            {
-                (int)MaintainerrPlexDataType.Movies => await GatherMovieCollectionItems(collection),
-                (int)MaintainerrPlexDataType.Shows => await GatherShowCollectionItems(collection),
-                (int)MaintainerrPlexDataType.Seasons => await GatherSeasonCollectionItems(collection),
-                (int)MaintainerrPlexDataType.Episodes => await GatherEpisodeCollectionItems(collection),
-                _ => []
-            };
-
-            foreach (var item in items)
-            {
-                var state = overlayStateManager.GetByPlexId(item.PlexId.ToString());
-                if (state is not { OverlayApplied: true })
-                {
-                    var assetBasePath = options.Value.AssetBasePath;
-                    // Save original poster (Asset Mode)
-                    var mediaFileFullPath = Path.Combine(assetBasePath, item.MediaFileRelativePath);
-                    var mediaFileFullName = Path.Combine(mediaFileFullPath, item.MediaFileName);
-
-                    if (!Directory.Exists(mediaFileFullPath))
-                    {
-                        Directory.CreateDirectory(mediaFileFullPath);
-                    }
-
-                    var fileList = Directory.GetFiles(mediaFileFullPath).Select(fileName => new FileInfo(fileName));
-
-                    var originalPoster = fileList.FirstOrDefault(fileInfo => fileInfo.Exists && fileInfo.Name.StartsWith(item.MediaFileName) && fileInfo.IsImageByExtension());
-
-                    if (originalPoster is { Exists: true })
-                    {
-                        var originalPosterBackupPath = mediaFileFullName + ".original" + originalPoster.Extension;
-                        File.Copy(originalPoster.FullName, originalPosterBackupPath, overwrite: true);
-                        mediaFileFullName = originalPoster.FullName;
-                    }
-                    else
-                    {
-                        // download original poster from plex instead
-                        var plexPoster = await plexClient.DownloadPlexImageAsync(item.OriginalPlexPosterUrl);
-
-                        if (plexPoster is { Exists: true } && plexPoster.IsImageByExtension())
-                        {
-                            var originalPosterBackupPath = mediaFileFullName + ".original" + plexPoster.Extension;
-                            mediaFileFullName = mediaFileFullName + plexPoster.Extension;
-                            File.Copy(plexPoster.FullName, mediaFileFullName, overwrite: true);
-                            File.Copy(plexPoster.FullName, originalPosterBackupPath, overwrite: true);
-                            File.Delete(plexPoster.FullName);
-                        }
-                        else
-                        {
-                            logger.LogInformation("Could not find or fetch original poster for {PlexId}", item.PlexId);
-                        }
-
-                    }
-                    // Apply overlay (placeholder for actual overlay logic)
-                    var culture = new CultureInfo(options.Value.Language);
-                    var formattedDate = item.ExpirationDate.ToString(options.Value.DateFormat, culture);
-                    var overlayText = $"{options.Value.OverlayText} {formattedDate}";
-                    if(options.Value.EnableDaySuffix) overlayText = overlayText + item.ExpirationDate.GetDaySuffix();
-                    if(options.Value.EnableUppercase) overlayText = overlayText.ToUpper();
-
-                    var result = overlayHelper.AddOverlay(item.PlexId, mediaFileFullName, overlayText);
-
-                    if (result is { Exists: true })
-                    {
-                        File.Copy(result.FullName, mediaFileFullName, overwrite: true);
-                        File.Delete(result.FullName);
-                        logger.LogInformation("Applied overlay for {ItemPlexId}", item.PlexId);
-                    }
-                    else
-                    {
-                        logger.LogInformation("Could not apply overlay for {ItemPlexId}", item.PlexId);
-                    }
-
-                    // overlayStateManager.Upsert(new OverlayStateItem
-                    // {
-                    //     PlexId = item.PlexId.ToString(),
-                    //     MaintainerrCollectionId = collection.Id,
-                    //     PosterPath = mediaFileFullPath,
-                    //     OriginalPosterPath = originalPosterBackupPath,
-                    //     OverlayApplied = true,
-                    //     LastChecked = DateTime.UtcNow,
-                    //     PosterHash = null // Optionally compute hash
-                    // });
-                    // logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}", item.PlexId);
-                }
-                else
-                {
-                    // Already applied, update LastChecked
-                    state.LastChecked = DateTime.UtcNow;
-                    overlayStateManager.Upsert(state);
-                }
-            }
-        }
     }
 
+    private string GetOverlayText(OverlayManagerItem item)
+    {
+        var culture = new CultureInfo(options.Value.Language);
+        var formattedDate = item.ExpirationDate.ToString(options.Value.DateFormat, culture);
+        var overlayText = $"{options.Value.OverlayText} {formattedDate}";
+        if(options.Value.EnableDaySuffix) overlayText += item.ExpirationDate.GetDaySuffix();
+        if(options.Value.EnableUppercase) overlayText = overlayText.ToUpper();
+        return overlayText;
+    }
 
+    private static FileInfo? GetOriginalPoster(DirectoryInfo mediaFileDirectory, OverlayManagerItem item)
+    {
+        var fileList = mediaFileDirectory.GetFiles();
+
+        var matches = fileList.Where(fileInfo => fileInfo.Exists &&
+                                                                 fileInfo.Name.StartsWith(item.MediaFileName) &&
+                                                                 fileInfo.IsImageByExtension())
+            .ToList();
+        var backupOriginalPoster = matches.FirstOrDefault(x => x.Name.Contains(BackupFileNameSuffix));
+        return backupOriginalPoster ?? matches.FirstOrDefault();
+    }
 
     private async Task<IEnumerable<OverlayManagerItem>> GatherMovieCollectionItems(MaintainerrCollection collection)
     {
