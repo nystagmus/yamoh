@@ -3,9 +3,9 @@ using Microsoft.Extensions.Logging;
 
 namespace YAMOH.Commands;
 
-public class TestPlexCommand(PlexAPI plexApi, ILogger<TestPlexCommand> logger) : IYamohCommand
+public class GetPlexInfo(PlexAPI plexApi, ILogger<GetPlexInfo> logger) : IYamohCommand
 {
-    public string CommandName => "test-plex-api";
+    public string CommandName => "get-plex-info";
     public string CommandDescription => "Test the PlexAPI and print the response";
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {

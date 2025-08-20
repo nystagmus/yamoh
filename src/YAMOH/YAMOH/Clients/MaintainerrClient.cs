@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using YAMOH.Models;
+using YAMOH.Models.Maintainerr;
 
 namespace YAMOH.Clients;
 

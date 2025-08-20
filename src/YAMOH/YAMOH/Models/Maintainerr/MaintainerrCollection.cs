@@ -1,6 +1,4 @@
-﻿using YAMOH.Clients;
-
-namespace YAMOH.Models;
+﻿namespace YAMOH.Models.Maintainerr;
 
 public class MaintainerrCollection
 {

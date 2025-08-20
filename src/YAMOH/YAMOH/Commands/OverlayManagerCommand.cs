@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using YAMOH.Clients;
 using YAMOH.Infrastructure;
 using YAMOH.Models;
+using YAMOH.Models.Maintainerr;
 
 namespace YAMOH.Commands;
 
@@ -31,6 +32,36 @@ public class OverlayManagerCommand(
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
+        var assetBasePath = options.Value.AssetBasePath;
+
+        if (!new DirectoryInfo(assetBasePath).HasWritePermissions())
+        {
+            logger.LogError("Asset Base path doesn't exist or is not writeable. Path: {Path}", assetBasePath);
+            return;
+        }
+
+        var backupAssetBasePath = options.Value.BackupImagePath;
+
+        if (!new DirectoryInfo(backupAssetBasePath).HasWritePermissions())
+        {
+            logger.LogError("Backup Image Path doesn't exist or is not writeable. Path: {Path}", backupAssetBasePath);
+        }
+
+        if (options.Value.RestoreOnly)
+        {
+            logger.LogWarning("[yellow bold]Restore Only[/] was set in configuration. Will restore all posters back to original");
+            var restoreItems = overlayStateManager.GetAppliedOverlays().ToList();
+
+            var count = restoreItems.Sum(RestoreOriginalPoster);
+            foreach (var overlayStateItem in restoreItems)
+            {
+                overlayStateItem.OverlayApplied = false;
+                overlayStateManager.Upsert(overlayStateItem);
+            }
+            logger.LogInformation("Restored {Count} images back to their originals", count);
+            return;
+        }
+
         var collections = (await maintainerrClient.GetCollections())
             .Where(x => x is { IsActive: true, DeleteAfterDays: > 0 }).ToList();
 
@@ -69,20 +100,32 @@ public class OverlayManagerCommand(
                     state.LastChecked = DateTimeOffset.UtcNow;
                     state.LastKnownExpirationDate = item.ExpirationDate;
 
-                    var assetBasePath = options.Value.AssetBasePath;
                     // Save original poster (Asset Mode)
                     var mediaFileFullPath = Path.GetFullPath(Path.Combine(assetBasePath, item.MediaFileRelativePath));
                     var mediaFileFullName = Path.GetFullPath(Path.Combine(mediaFileFullPath, item.MediaFileName));
                     var mediaFileDirectory = new DirectoryInfo(mediaFileFullPath);
 
-                    if (!mediaFileDirectory.Exists)
+                    if (!mediaFileDirectory.TryCreate())
                     {
-                        mediaFileDirectory.Create();
+                        logger.LogInformation("Failed to create media file directory. Path: {Path}", mediaFileFullPath);
+                        skippedBecauseOfError++;
+                        continue;
+                    }
+
+                    var backupFileFullPath = Path.GetFullPath(Path.Combine(backupAssetBasePath, item.MediaFileRelativePath));
+                    var backupFileFullName = Path.GetFullPath(Path.Combine(backupFileFullPath, item.MediaFileName));
+                    var backupFileDirectory = new DirectoryInfo(backupFileFullPath);
+
+                    if (!backupFileDirectory.TryCreate())
+                    {
+                        logger.LogInformation("Failed to create backup file directory. Path: {Path}", backupFileFullPath);
+                        skippedBecauseOfError++;
+                        continue;
                     }
 
                     // Will get poster.original.jpg first, else poster.jpg if exists, or null
-                    var originalPoster = GetOriginalPoster(mediaFileDirectory, item);
-                    var originalPosterBackupFullName = mediaFileFullName + BackupFileNameSuffix;
+                    var originalPoster = GetOriginalPoster(backupFileDirectory, mediaFileDirectory, item);
+                    var originalPosterBackupFullName = backupFileFullName + BackupFileNameSuffix;
 
                     if (originalPoster is { Exists: true })
                     {
@@ -123,12 +166,23 @@ public class OverlayManagerCommand(
 
                     if (result is { Exists: true })
                     {
-                        File.Copy(result.FullName, mediaFileFullName, overwrite: true);
-                        File.Delete(result.FullName);
-                        state.OverlayApplied = true;
-                        state.PosterHash = null;
-                        appliedOverlays++;
-                        logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}", item.PlexId);
+                        try
+                        {
+                            File.Copy(result.FullName, mediaFileFullName, overwrite: true);
+                            File.Delete(result.FullName);
+                            state.OverlayApplied = true;
+                            state.PosterHash = null;
+                            appliedOverlays++;
+                            logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}", item.PlexId);
+                        }
+                        catch (Exception ex)
+                        {
+                            state.OverlayApplied = false;
+                            state.PosterHash = null;
+                            logger.LogError(ex, "Error updating overlay");
+                            skippedBecauseOfError++;
+                            continue;
+                        }
                     }
                     else
                     {
@@ -148,6 +202,7 @@ public class OverlayManagerCommand(
             }
         }
 
+        SpectreConsoleHelper.PrintKometaAssetGuide();
         logger.LogInformation(
             "Overlay operations completed with {RemovedOverlays} removed, {AppliedOverlays} applied, {SkippedOverlays} skipped, and {SkippedDueToError} error skips",
             removedOverlays, appliedOverlays, skippedOverlays, skippedBecauseOfError);
@@ -172,27 +227,25 @@ public class OverlayManagerCommand(
         // Get all PlexIds currently in Maintainerr
         var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId.ToString()).ToHashSet();
 
-        var restoredPosters = 0;
-
         // Restore overlays for items no longer in Maintainerr but still in Plex
-        foreach (var stateItem in overlayStateManager.GetPendingRestores(currentPlexIds))
+
+        return overlayStateManager.GetPendingRestores(currentPlexIds).Sum(RestoreOriginalPoster);
+    }
+
+    private int RestoreOriginalPoster(OverlayStateItem stateItem)
+    {
+        // Restore original poster
+        if (File.Exists(stateItem.OriginalPosterPath))
         {
-            // Restore original poster
-            if (File.Exists(stateItem.OriginalPosterPath))
-            {
-                File.Copy(stateItem.OriginalPosterPath, stateItem.PosterPath, overwrite: true);
-                File.Delete(stateItem.OriginalPosterPath);
-                overlayStateManager.Remove(stateItem.PlexId);
-                restoredPosters++;
-                logger.LogInformation("Restored original poster for PlexId {StateItemPlexId}", stateItem.PlexId);
-            }
-            else
-            {
-                logger.LogWarning("Original poster backup missing for PlexId {StateItemPlexId}", stateItem.PlexId);
-            }
+            File.Copy(stateItem.OriginalPosterPath, stateItem.PosterPath, overwrite: true);
+            File.Delete(stateItem.OriginalPosterPath);
+            overlayStateManager.Remove(stateItem.PlexId);
+            logger.LogInformation("Restored original poster for PlexId {StateItemPlexId}", stateItem.PlexId);
+            return 1;
         }
 
-        return restoredPosters;
+        logger.LogWarning("Original poster backup missing for PlexId {StateItemPlexId}", stateItem.PlexId);
+        return 0;
     }
 
     private string GetOverlayText(OverlayManagerItem item)
@@ -205,15 +258,21 @@ public class OverlayManagerCommand(
         return overlayText;
     }
 
-    private static FileInfo? GetOriginalPoster(DirectoryInfo mediaFileDirectory, OverlayManagerItem item)
+    private static FileInfo? GetOriginalPoster(DirectoryInfo backupDirectory, DirectoryInfo mediaFileDirectory, OverlayManagerItem item)
     {
+        var backupFileList = backupDirectory.GetFiles();
+
+        var backupMatches = backupFileList.Where(fileInfo => fileInfo.Exists &&
+                                                             fileInfo.Name.StartsWith(item.MediaFileName) &&
+                                                             fileInfo.IsImageByExtension())
+            .ToList();
         var fileList = mediaFileDirectory.GetFiles();
+        var backupOriginalPoster = backupMatches.FirstOrDefault(x => x.Name.Contains(BackupFileNameSuffix));
 
         var matches = fileList.Where(fileInfo => fileInfo.Exists &&
                                                  fileInfo.Name.StartsWith(item.MediaFileName) &&
                                                  fileInfo.IsImageByExtension())
             .ToList();
-        var backupOriginalPoster = matches.FirstOrDefault(x => x.Name.Contains(BackupFileNameSuffix));
         return backupOriginalPoster ?? matches.FirstOrDefault();
     }
 

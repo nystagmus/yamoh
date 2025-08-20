@@ -1,7 +1,6 @@
 ﻿using System.CommandLine;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
-using System.Runtime.InteropServices.ComTypes;
 using LukeHagar.PlexAPI.SDK;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

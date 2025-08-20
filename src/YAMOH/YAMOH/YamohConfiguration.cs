@@ -13,6 +13,7 @@ public class YamohConfiguration
     public string TempImagePath { get; set; } = string.Empty;
     public bool UseAssetMode { get; set; } = true;
     public string AssetBasePath { get; set; } = string.Empty;
+    public string BackupImagePath { get; set; } = string.Empty;
     public string FontPath { get; set; } = "Fonts";
     public string FontName { get; set; } = "AvenirNextLTPro-Bold";
     public string FontColor { get; set; } = "#ffffff";
@@ -37,6 +38,7 @@ public class YamohConfiguration
     public bool ReapplyOverlays { get; set; }
     public bool OverlayShowSeasons { get; set; }
     public bool OverlaySeasonEpisodes { get; set; }
+    public bool RestoreOnly { get; set; }
 
     public bool AssertIsValid()
     {
@@ -50,6 +52,7 @@ public class YamohConfiguration
         // Validate path formats (allow absolute or relative)
         ValidatePathFormat(AssetBasePath, nameof(AssetBasePath));
         ValidatePathFormat(TempImagePath, nameof(TempImagePath));
+        ValidatePathFormat(BackupImagePath, nameof(BackupImagePath));
         ValidatePathFormat(FontPath, nameof(FontPath));
 
         // For FontPath, check that the file exists (using resolved absolute path)

@@ -1,14 +1,9 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Encodings.Web;
 using System.Text.Json;
-using LukeHagar.PlexAPI.SDK.Hooks;
-using LukeHagar.PlexAPI.SDK.Models.Errors;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
-using LukeHagar.PlexAPI.SDK.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using Directory = System.IO.Directory;
 
 namespace YAMOH.Clients;
@@ -31,6 +26,7 @@ public class PlexClient
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
+    // The SDK implementation was broken when this was originally developed
     public async Task<FileInfo?> DownloadPlexImageAsync(string urlStub)
     {
         // Ensure temp directory exists
@@ -81,6 +77,7 @@ public class PlexClient
         }
     }
 
+    // The SDK implementation was broken when this was originally developed
     public async Task<GetMetadataChildrenResponseBody?> GetMetadataChildrenAsync(int ratingKey)
     {
         // Build full URL
