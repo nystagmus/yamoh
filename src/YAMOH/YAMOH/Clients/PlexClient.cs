@@ -12,7 +12,6 @@ public class PlexClient(
     private readonly YamohConfiguration _config = config.Value;
     private readonly HttpClient _httpClient = clientFactory.CreateClient("YAMOH");
 
-
     public async Task<FileInfo?> DownloadPlexImageAsync(string urlStub)
     {
         // Ensure temp directory exists
@@ -60,5 +59,4 @@ public class PlexClient(
             return null;
         }
     }
-
 }

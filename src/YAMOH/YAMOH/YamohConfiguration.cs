@@ -34,7 +34,7 @@ public class YamohConfiguration
     public bool EnableDaySuffix {get;set;} = true;
     public bool EnableUppercase { get; set; } = true;
     public string Language { get; set; } = "en-US";
-    public bool ReapplyUpdates { get; set; }
+    public bool ReapplyOverlays { get; set; }
 
     public bool AssertIsValid()
     {
