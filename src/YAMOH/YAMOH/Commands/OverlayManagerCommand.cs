@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using Ardalis.GuardClauses;
 using LukeHagar.PlexAPI.SDK;
@@ -126,8 +127,12 @@ public class OverlayManagerCommand(
 
                     }
                     // Apply overlay (placeholder for actual overlay logic)
-                    var formattedDate = item.ExpirationDate.ToString(options.Value.DateFormat);
+                    var culture = new CultureInfo(options.Value.Language);
+                    var formattedDate = item.ExpirationDate.ToString(options.Value.DateFormat, culture);
                     var overlayText = $"{options.Value.OverlayText} {formattedDate}";
+                    if(options.Value.EnableDaySuffix) overlayText = overlayText + item.ExpirationDate.GetDaySuffix();
+                    if(options.Value.EnableUppercase) overlayText = overlayText.ToUpper();
+
                     var result = overlayHelper.AddOverlay(item.PlexId, mediaFileFullName, overlayText);
 
                     if (result is { Exists: true })
@@ -256,6 +261,7 @@ public class OverlayManagerCommand(
                 showPath = showPath.Replace(libraryPath, string.Empty);
                 showPath = Path.Join(libraryName, showPath);
 
+                // todo: handle children? include option & call GatherSeasonCollectionItems for children
                 return new OverlayManagerItem()
                 {
                     PlexId = maintainerrItem.PlexId,
@@ -316,6 +322,7 @@ public class OverlayManagerCommand(
 
                 var seasonIndex = plexMeta.Metadata[0].Index.ToString().PadLeft(2, '0');
 
+                // todo: handle children? include option & call GatherEpisodeCollectionItems for children
                 return new OverlayManagerItem()
                 {
                     PlexId = maintainerrItem.PlexId,

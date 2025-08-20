@@ -5,7 +5,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <InvariantGlobalization>true</InvariantGlobalization>
+        <InvariantGlobalization>false</InvariantGlobalization>
         <UserSecretsId>0068d28c-09ca-48a2-be46-75ede89b213c</UserSecretsId>
     </PropertyGroup>
 
@@ -35,10 +35,6 @@
         <None Update="state\overlay_state.db">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Fonts\"/>
     </ItemGroup>
 
 </Project>

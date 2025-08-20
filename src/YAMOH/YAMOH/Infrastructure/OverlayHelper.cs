@@ -154,7 +154,7 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
 
             drawables.Draw(image);
 
-            // // Add a visible debug marker (red circle at top-left corner)
+            // // Add a visible debug marker (red dot at rect origin, blue dot at text origin)
             // var debugDrawables = new Drawables()
             //     .FillColor(MagickColors.Red)
             //     .StrokeColor(MagickColors.Red)
@@ -162,7 +162,6 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             //     .FillColor(MagickColors.Blue)
             //     .StrokeColor(MagickColors.Blue)
             //     .Ellipse(textX, textY, 20, 20, 0, 360);
-            //
             //
             // debugDrawables.Draw(image);
 

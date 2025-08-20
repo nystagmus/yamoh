@@ -57,8 +57,8 @@ public class YamohConfiguration
             throw new FileNotFoundException($"FontPath path not found: {fontFullPath}");
 
         // Validate numeric values
-        Guard.Against.OutOfRange(FontTransparency, nameof(FontTransparency), 0, 100);
-        Guard.Against.OutOfRange(BackTransparency, nameof(BackTransparency), 0, 100);
+        Guard.Against.OutOfRange(FontTransparency, nameof(FontTransparency), 0, 1);
+        Guard.Against.OutOfRange(BackTransparency, nameof(BackTransparency), 0, 1);
         Guard.Against.OutOfRange(FontSize, nameof(FontSize), 1, 200);
         Guard.Against.OutOfRange(Padding, nameof(Padding), 0, 100);
         Guard.Against.OutOfRange(BackRadius, nameof(BackRadius), 0, 200);
