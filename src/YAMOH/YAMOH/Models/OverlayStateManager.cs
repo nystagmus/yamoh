@@ -1,7 +1,4 @@
 using LiteDB;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace YAMOH.Models
 {
@@ -38,8 +35,9 @@ namespace YAMOH.Models
 
         public IEnumerable<OverlayStateItem> GetPendingRestores(IEnumerable<string> currentPlexIds)
         {
+            currentPlexIds = currentPlexIds.ToList();
             // Items that have overlays applied but are no longer in Maintainerr
-            return _collection.Find(x => x.OverlayApplied && !currentPlexIds.Contains(x.PlexId));
+            return _collection.Find(x => x.OverlayApplied && !(currentPlexIds.Contains(x.PlexId) || currentPlexIds.Contains(x.ParentPlexId)));
         }
 
         public void Dispose()

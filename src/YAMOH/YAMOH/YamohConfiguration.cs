@@ -35,6 +35,8 @@ public class YamohConfiguration
     public bool EnableUppercase { get; set; } = true;
     public string Language { get; set; } = "en-US";
     public bool ReapplyOverlays { get; set; }
+    public bool OverlayShowSeasons { get; set; }
+    public bool OverlaySeasonEpisodes { get; set; }
 
     public bool AssertIsValid()
     {

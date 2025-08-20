@@ -31,14 +31,19 @@ public class OverlayManagerCommand(
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        var collections = await maintainerrClient.GetCollections();
+        var collections = (await maintainerrClient.GetCollections())
+            .Where(x => x is { IsActive: true, DeleteAfterDays: > 0 }).ToList();
+
         if (collections.Count == 0)
         {
-            logger.LogInformation("Maintainerr returned zero collections. Check configuration");
+            logger.LogInformation("Maintainerr returned zero active collections. Check configuration");
             return;
         }
 
-        RestoreOriginalPosters(collections);
+        var removedOverlays = RestoreOriginalPosters(collections);
+        var appliedOverlays = 0;
+        var skippedOverlays = 0;
+        var skippedBecauseOfError = 0;
 
         // For each collection, process overlays and update state
         foreach (var collection in collections.Where(collection => collection.IsActive))
@@ -48,9 +53,12 @@ public class OverlayManagerCommand(
             foreach (var item in items)
             {
                 var state = overlayStateManager.GetByPlexId(item.PlexId.ToString());
+
                 state ??= new OverlayStateItem
                 {
                     PlexId = item.PlexId.ToString(),
+                    IsChild = item.IsChild,
+                    ParentPlexId = item.ParentPlexId ?? string.Empty,
                 };
 
                 var shouldReapply = state.LastKnownExpirationDate.Date != item.ExpirationDate.Date;
@@ -75,10 +83,12 @@ public class OverlayManagerCommand(
                     // Will get poster.original.jpg first, else poster.jpg if exists, or null
                     var originalPoster = GetOriginalPoster(mediaFileDirectory, item);
                     var originalPosterBackupFullName = mediaFileFullName + BackupFileNameSuffix;
+
                     if (originalPoster is { Exists: true })
                     {
                         mediaFileFullName += originalPoster.Extension;
                         originalPosterBackupFullName += originalPoster.Extension;
+
                         if (!File.Exists(originalPosterBackupFullName))
                             File.Copy(originalPoster.FullName, originalPosterBackupFullName, overwrite: true);
                     }
@@ -97,6 +107,7 @@ public class OverlayManagerCommand(
                         }
                         else
                         {
+                            skippedBecauseOfError++;
                             logger.LogInformation("Could not find or fetch original poster for {PlexId}", item.PlexId);
                             continue;
                         }
@@ -116,23 +127,30 @@ public class OverlayManagerCommand(
                         File.Delete(result.FullName);
                         state.OverlayApplied = true;
                         state.PosterHash = null;
+                        appliedOverlays++;
                         logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}", item.PlexId);
                     }
                     else
                     {
                         logger.LogInformation("Could not apply overlay for {ItemPlexId}", item.PlexId);
+                        skippedBecauseOfError++;
                         state.OverlayApplied = false;
                     }
                 }
                 else
                 {
                     // Already applied, update LastChecked
+                    skippedOverlays++;
                     state.LastChecked = DateTime.UtcNow;
                 }
 
                 overlayStateManager.Upsert(state);
             }
         }
+
+        logger.LogInformation(
+            "Overlay operations completed with {RemovedOverlays} removed, {AppliedOverlays} applied, {SkippedOverlays} skipped, and {SkippedDueToError} error skips",
+            removedOverlays, appliedOverlays, skippedOverlays, skippedBecauseOfError);
     }
 
     private async Task<GetAllLibrariesResponse> GetAllLibraries()
@@ -149,10 +167,12 @@ public class OverlayManagerCommand(
         throw new InvalidOperationException("Plex Library metadata could not be retrieved");
     }
 
-    private void RestoreOriginalPosters(List<MaintainerrCollection> collections)
+    private int RestoreOriginalPosters(List<MaintainerrCollection> collections)
     {
         // Get all PlexIds currently in Maintainerr
         var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId.ToString()).ToHashSet();
+
+        var restoredPosters = 0;
 
         // Restore overlays for items no longer in Maintainerr but still in Plex
         foreach (var stateItem in overlayStateManager.GetPendingRestores(currentPlexIds))
@@ -161,7 +181,9 @@ public class OverlayManagerCommand(
             if (File.Exists(stateItem.OriginalPosterPath))
             {
                 File.Copy(stateItem.OriginalPosterPath, stateItem.PosterPath, overwrite: true);
+                File.Delete(stateItem.OriginalPosterPath);
                 overlayStateManager.Remove(stateItem.PlexId);
+                restoredPosters++;
                 logger.LogInformation("Restored original poster for PlexId {StateItemPlexId}", stateItem.PlexId);
             }
             else
@@ -169,6 +191,8 @@ public class OverlayManagerCommand(
                 logger.LogWarning("Original poster backup missing for PlexId {StateItemPlexId}", stateItem.PlexId);
             }
         }
+
+        return restoredPosters;
     }
 
     private string GetOverlayText(OverlayManagerItem item)
@@ -176,8 +200,8 @@ public class OverlayManagerCommand(
         var culture = new CultureInfo(options.Value.Language);
         var formattedDate = item.ExpirationDate.ToString(options.Value.DateFormat, culture);
         var overlayText = $"{options.Value.OverlayText} {formattedDate}";
-        if(options.Value.EnableDaySuffix) overlayText += item.ExpirationDate.GetDaySuffix();
-        if(options.Value.EnableUppercase) overlayText = overlayText.ToUpper();
+        if (options.Value.EnableDaySuffix) overlayText += item.ExpirationDate.GetDaySuffix();
+        if (options.Value.EnableUppercase) overlayText = overlayText.ToUpper();
         return overlayText;
     }
 
@@ -186,8 +210,8 @@ public class OverlayManagerCommand(
         var fileList = mediaFileDirectory.GetFiles();
 
         var matches = fileList.Where(fileInfo => fileInfo.Exists &&
-                                                                 fileInfo.Name.StartsWith(item.MediaFileName) &&
-                                                                 fileInfo.IsImageByExtension())
+                                                 fileInfo.Name.StartsWith(item.MediaFileName) &&
+                                                 fileInfo.IsImageByExtension())
             .ToList();
         var backupOriginalPoster = matches.FirstOrDefault(x => x.Name.Contains(BackupFileNameSuffix));
         return backupOriginalPoster ?? matches.FirstOrDefault();
@@ -199,13 +223,21 @@ public class OverlayManagerCommand(
         {
             return new List<OverlayManagerItem>();
         }
-        var dtos = collection.Media.Select(x => new MaintainerrMediaDto() { AddDate = x.AddDate, PlexId = x.PlexId }).ToList();
+
+        var maintainerrMedia = collection.Media
+            .Select(x => new MaintainerrMediaDto() { AddDate = x.AddDate, PlexId = x.PlexId })
+            .ToList();
+
         var items = collection.Type switch
         {
-            (int)MaintainerrPlexDataType.Movies => await GatherMovieCollectionItems(collection.Title, collection.DeleteAfterDays, dtos),
-            (int)MaintainerrPlexDataType.Shows => await GatherShowCollectionItems(collection.Title, collection.DeleteAfterDays, dtos),
-            (int)MaintainerrPlexDataType.Seasons => await GatherSeasonCollectionItems(collection.Title, collection.DeleteAfterDays, dtos),
-            (int)MaintainerrPlexDataType.Episodes => await GatherEpisodeCollectionItems(collection.Title, collection.DeleteAfterDays, dtos),
+            (int)MaintainerrPlexDataType.Movies => await GatherMovieCollectionItems(collection.Title,
+                collection.DeleteAfterDays, maintainerrMedia),
+            (int)MaintainerrPlexDataType.Shows => await GatherShowCollectionItems(collection.Title,
+                collection.DeleteAfterDays, maintainerrMedia),
+            (int)MaintainerrPlexDataType.Seasons => await GatherSeasonCollectionItems(collection.Title,
+                collection.DeleteAfterDays, maintainerrMedia),
+            (int)MaintainerrPlexDataType.Episodes => await GatherEpisodeCollectionItems(collection.Title,
+                collection.DeleteAfterDays, maintainerrMedia),
             _ => []
         };
         return items;
@@ -213,16 +245,17 @@ public class OverlayManagerCommand(
 
     private async Task<IEnumerable<OverlayManagerItem>> GatherMovieCollectionItems(string? collectionTitle,
         int deleteAfterDays,
-        List<MaintainerrMediaDto> dtos)
+        List<MaintainerrMediaDto> maintainerrMedia)
     {
         return await GatherCollectionItems(
             MaintainerrPlexDataType.Movies,
             collectionTitle,
             deleteAfterDays,
-            dtos,
-            async (metadataResponse, plexId) =>
+            maintainerrMedia,
+            async (metadataResponse, plexId, _) =>
             {
                 var items = new List<OverlayManagerItem>();
+
                 var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
 
@@ -275,16 +308,17 @@ public class OverlayManagerCommand(
 
     private async Task<IEnumerable<OverlayManagerItem>> GatherShowCollectionItems(string? collectionTitle,
         int deleteAfterDays,
-        List<MaintainerrMediaDto> dtos)
+        List<MaintainerrMediaDto> maintainerrMedia)
     {
         return await GatherCollectionItems(
             MaintainerrPlexDataType.Shows,
             collectionTitle,
             deleteAfterDays,
-            dtos,
-            async (metadataResponse, plexId) =>
+            maintainerrMedia,
+            async (metadataResponse, plexId, addDate) =>
             {
                 var items = new List<OverlayManagerItem>();
+
                 var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
                 var showPath = Guard.Against.Null(metadataResponse.Object.MediaContainer.Metadata[0].Location?[0].Path);
@@ -313,7 +347,6 @@ public class OverlayManagerCommand(
                 showPath = showPath.Replace(libraryPath, string.Empty);
                 showPath = Path.Join(libraryName, showPath);
 
-                // todo: handle children? include option & call GatherSeasonCollectionItems for children
                 items.Add(new OverlayManagerItem()
                 {
                     PlexId = plexId,
@@ -323,6 +356,31 @@ public class OverlayManagerCommand(
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = "poster",
                 });
+
+                if (!options.Value.OverlaySeasonEpisodes)
+                {
+                    return items;
+                }
+
+                logger.LogInformation("Adding Seasons for {PlexId}", plexId);
+                var episodeInfos = await plexClient.GetMetadataChildrenAsync(plexId);
+
+                var episodeIds = episodeInfos?.MediaContainer?.Metadata?.Where(x => x.RatingKey != null)
+                    .Select(metadata =>
+                        int.Parse(metadata.RatingKey!)).ToArray();
+
+                if (episodeIds is null || episodeIds.Length <= 0)
+                {
+                    return items;
+                }
+
+                var childrenMaintainerrMedia = episodeIds
+                    .Select(x => new MaintainerrMediaDto() { PlexId = x, AddDate = addDate })
+                    .ToList();
+
+                items.AddRange(await GatherSeasonCollectionItems(collectionTitle, deleteAfterDays,
+                    childrenMaintainerrMedia, true, plexId.ToString()));
+
                 return items;
             });
     }
@@ -330,16 +388,19 @@ public class OverlayManagerCommand(
     private async Task<IEnumerable<OverlayManagerItem>> GatherSeasonCollectionItems(
         string? collectionTitle,
         int deleteAfterDays,
-        List<MaintainerrMediaDto> dtos)
+        List<MaintainerrMediaDto> maintainerrMedia,
+        bool asChild = false,
+        string? parentId = "")
     {
         return await GatherCollectionItems(
             MaintainerrPlexDataType.Seasons,
             collectionTitle,
             deleteAfterDays,
-            dtos,
-            async (metadataResponse, plexId) =>
+            maintainerrMedia,
+            async (metadataResponse, plexId, addDate) =>
             {
                 var items = new List<OverlayManagerItem>();
+
                 var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
                 var parentPlexId = Guard.Against.Null(plexMeta.Metadata[0].ParentRatingKey);
@@ -381,8 +442,7 @@ public class OverlayManagerCommand(
 
                 var seasonIndex = plexMeta.Metadata[0].Index.ToString().PadLeft(2, '0');
 
-                // todo: handle children? include option & call GatherEpisodeCollectionItems for children
-                items.Add(new OverlayManagerItem()
+                var item = new OverlayManagerItem()
                 {
                     PlexId = plexId,
                     DataType = MaintainerrPlexDataType.Seasons,
@@ -390,7 +450,40 @@ public class OverlayManagerCommand(
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = $"Season{seasonIndex}"
-                });
+                };
+
+                if (asChild)
+                {
+                    item.IsChild = true;
+                    item.ParentPlexId = parentId;
+                }
+
+                items.Add(item);
+
+                if (!options.Value.OverlaySeasonEpisodes)
+                {
+                    return items;
+                }
+
+                logger.LogInformation("Adding Episodes for {PlexId}", plexId);
+                var episodeInfos = await plexClient.GetMetadataChildrenAsync(plexId);
+
+                var episodeIds = episodeInfos?.MediaContainer?.Metadata?.Where(x => x.RatingKey != null)
+                    .Select(metadata =>
+                        int.Parse(metadata.RatingKey!)).ToArray();
+
+                if (episodeIds is null || episodeIds.Length <= 0)
+                {
+                    return items;
+                }
+
+                var childrenMaintainerrMedia = episodeIds
+                    .Select(x => new MaintainerrMediaDto() { PlexId = x, AddDate = addDate })
+                    .ToList();
+
+                items.AddRange(await GatherEpisodeCollectionItems(collectionTitle, deleteAfterDays,
+                    childrenMaintainerrMedia, true, plexId.ToString()));
+
                 return items;
             });
     }
@@ -398,16 +491,19 @@ public class OverlayManagerCommand(
     private async Task<IEnumerable<OverlayManagerItem>> GatherEpisodeCollectionItems(
         string? collectionTitle,
         int deleteAfterDays,
-        List<MaintainerrMediaDto> dtos)
+        List<MaintainerrMediaDto> maintainerrMedia,
+        bool asChild = false,
+        string? parentId = "")
     {
         return await GatherCollectionItems(
             MaintainerrPlexDataType.Episodes,
             collectionTitle,
             deleteAfterDays,
-            dtos,
-            async (metadataResponse, plexId) =>
+            maintainerrMedia,
+            async (metadataResponse, plexId, _) =>
             {
                 var items = new List<OverlayManagerItem>();
+
                 var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
                 var grandParentPlexId = Guard.Against.Null(plexMeta.Metadata[0].GrandparentRatingKey);
@@ -451,7 +547,7 @@ public class OverlayManagerCommand(
                 var seasonIndex = plexMeta.Metadata[0].ParentIndex.ToString()?.PadLeft(2, '0');
                 var episodeIndex = plexMeta.Metadata[0].Index.ToString().PadLeft(2, '0');
 
-                items.Add(new OverlayManagerItem()
+                var item = new OverlayManagerItem()
                 {
                     PlexId = plexId,
                     DataType = MaintainerrPlexDataType.Episodes,
@@ -459,7 +555,15 @@ public class OverlayManagerCommand(
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = $"S{seasonIndex}E{episodeIndex}"
-                });
+                };
+
+                if (asChild)
+                {
+                    item.IsChild = true;
+                    item.ParentPlexId = parentId;
+                }
+
+                items.Add(item);
                 return items;
             });
     }
@@ -468,20 +572,19 @@ public class OverlayManagerCommand(
         MaintainerrPlexDataType dataType,
         string? collectionTitle,
         int deleteAfterDays,
-        List<MaintainerrMediaDto> dtos,
-        Func<GetMediaMetaDataResponse, int, Task<IEnumerable<OverlayManagerItem>>> buildItems)
+        List<MaintainerrMediaDto> maintainerrMedia,
+        Func<GetMediaMetaDataResponse, int, DateTime, Task<IEnumerable<OverlayManagerItem>>> buildItems)
     {
         logger.LogInformation("Processing {DataType} collection: {Collection}", dataType, collectionTitle);
         var items = new List<OverlayManagerItem>();
-        //var deleteAfterDays = collection.DeleteAfterDays;
 
-        if (dtos.Count == 0)
+        if (maintainerrMedia.Count == 0)
         {
             logger.LogInformation("No media found for collection: {Collection}", collectionTitle);
             return items;
         }
 
-        foreach (var maintainerrItem in dtos)
+        foreach (var maintainerrItem in maintainerrMedia)
         {
             var plexId = maintainerrItem.PlexId;
             logger.LogInformation("Fetching Plex Metadata for {PlexId}", plexId);
@@ -502,7 +605,7 @@ public class OverlayManagerCommand(
                     continue;
                 }
 
-                var builtItems = await buildItems(metadataResponse, maintainerrItem.PlexId);
+                var builtItems = await buildItems(metadataResponse, maintainerrItem.PlexId, maintainerrItem.AddDate);
 
                 foreach (var builtItem in builtItems)
                 {
@@ -517,7 +620,8 @@ public class OverlayManagerCommand(
 
                     logger.LogInformation(
                         "Added {ItemType} item with PlexId: {PlexId}, LibraryName: {LibraryName}, ItemRelativePath: {ItemRelativePath}, Exp Date: {ExpirationDate}",
-                        builtItem.DataType, builtItem.PlexId, builtItem.LibraryName, builtItem.MediaFileRelativePath, builtItem.ExpirationDate);
+                        builtItem.DataType, builtItem.PlexId, builtItem.LibraryName, builtItem.MediaFileRelativePath,
+                        builtItem.ExpirationDate);
                 }
             }
             catch (Exception ex)
@@ -531,8 +635,7 @@ public class OverlayManagerCommand(
 
     private class MaintainerrMediaDto
     {
-        public required int PlexId { get; set; }
-        public required DateTime AddDate { get; set; }
+        public required int PlexId { get; init; }
+        public required DateTime AddDate { get; init; }
     }
 }
-
