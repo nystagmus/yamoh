@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace YAMOH.Infrastructure;
+namespace YAMOH.Infrastructure.Extensions;
 
 public static class ServiceCollectionExtensions
 {

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using YAMOH.Clients;
 using YAMOH.Infrastructure;
+using YAMOH.Infrastructure.Extensions;
 using YAMOH.Models;
 using YAMOH.Models.Maintainerr;
 
@@ -53,7 +54,13 @@ public class OverlayManagerCommand(
             logger.LogWarning("[yellow bold]Restore Only[/] was set in configuration. Will restore all posters back to original");
             var restoreItems = overlayStateManager.GetAppliedOverlays().ToList();
 
-            var count = restoreItems.Sum(RestoreOriginalPoster);
+            var count = 0;
+
+            foreach (var item in restoreItems)
+            {
+                count += await RestoreOriginalPoster(item);
+            }
+
             foreach (var overlayStateItem in restoreItems)
             {
                 overlayStateItem.OverlayApplied = false;
@@ -72,7 +79,7 @@ public class OverlayManagerCommand(
             return;
         }
 
-        var removedOverlays = RestoreOriginalPosters(collections);
+        var removedOverlays = await RestoreOriginalPosters(collections);
         var appliedOverlays = 0;
         var skippedOverlays = 0;
         var skippedBecauseOfError = 0;
@@ -84,13 +91,15 @@ public class OverlayManagerCommand(
 
             foreach (var item in items)
             {
-                var state = overlayStateManager.GetByPlexId(item.PlexId.ToString());
+                var state = overlayStateManager.GetByPlexId(item.PlexId);
 
                 state ??= new OverlayStateItem
                 {
-                    PlexId = item.PlexId.ToString(),
+                    PlexId = item.PlexId,
+                    LibrarySectionId = item.LibraryId,
+                    MaintainerrPlexType = item.MaintainerrPlexType,
                     IsChild = item.IsChild,
-                    ParentPlexId = item.ParentPlexId ?? string.Empty,
+                    ParentPlexId = item.ParentPlexId,
                 };
 
                 var shouldReapply = state.LastKnownExpirationDate.Date != item.ExpirationDate.Date;
@@ -159,6 +168,7 @@ public class OverlayManagerCommand(
 
                     state.PosterPath = mediaFileFullName;
                     state.OriginalPosterPath = originalPosterBackupFullName;
+                    state.KometaLabelExists = item.KometaOverlayApplied;
 
                     // Apply overlay
                     var overlayText = GetOverlayText(item);
@@ -181,6 +191,7 @@ public class OverlayManagerCommand(
                                 {
                                     logger.LogInformation("Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",KometaOverlayLabel, item.PlexId);
                                 }
+                                state.KometaLabelExists = false;
                             }
                             appliedOverlays++;
                             logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}", item.PlexId);
@@ -232,23 +243,35 @@ public class OverlayManagerCommand(
         throw new InvalidOperationException("Plex Library metadata could not be retrieved");
     }
 
-    private int RestoreOriginalPosters(List<MaintainerrCollection> collections)
+    private async Task<int> RestoreOriginalPosters(List<MaintainerrCollection> collections)
     {
         // Get all PlexIds currently in Maintainerr
-        var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId.ToString()).ToHashSet();
+        var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId).ToHashSet();
 
         // Restore overlays for items no longer in Maintainerr but still in Plex
+        var pendingRestores = overlayStateManager.GetPendingRestores(currentPlexIds);
+        var count = 0;
 
-        return overlayStateManager.GetPendingRestores(currentPlexIds).Sum(RestoreOriginalPoster);
+        foreach (var pendingRestore in pendingRestores)
+        {
+            count += await RestoreOriginalPoster(pendingRestore);
+        }
+
+        return count;
     }
 
-    private int RestoreOriginalPoster(OverlayStateItem stateItem)
+    private async Task<int> RestoreOriginalPoster(OverlayStateItem stateItem)
     {
         // Restore original poster
         if (File.Exists(stateItem.OriginalPosterPath))
         {
             File.Copy(stateItem.OriginalPosterPath, stateItem.PosterPath, overwrite: true);
             File.Delete(stateItem.OriginalPosterPath);
+            if (!await plexClient.RemoveLabelKeyFromItem(stateItem.LibrarySectionId, stateItem.PlexId, stateItem.MaintainerrPlexType,
+                    KometaOverlayLabel))
+            {
+                logger.LogInformation("Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",KometaOverlayLabel, stateItem.PlexId);
+            }
             overlayStateManager.Remove(stateItem.PlexId);
             logger.LogInformation("Restored original poster for PlexId {StateItemPlexId}", stateItem.PlexId);
             return 1;
@@ -368,6 +391,7 @@ public class OverlayManagerCommand(
                     DataType = MaintainerrPlexDataType.Movies,
                     LibraryName = libraryName,
                     LibraryId = librarySectionId,
+                    MaintainerrPlexType = MaintainerrPlexDataType.Movies,
                     MediaFileRelativePath = mediaFilePath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = "poster",
@@ -423,6 +447,7 @@ public class OverlayManagerCommand(
                     DataType = MaintainerrPlexDataType.Shows,
                     LibraryName = libraryName,
                     LibraryId = librarySectionId,
+                    MaintainerrPlexType = MaintainerrPlexDataType.Shows,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = "poster",
@@ -450,7 +475,7 @@ public class OverlayManagerCommand(
                     .ToList();
 
                 items.AddRange(await GatherSeasonCollectionItems(collectionTitle, deleteAfterDays,
-                    childrenMaintainerrMedia, true, plexId.ToString()));
+                    childrenMaintainerrMedia, true, plexId));
 
                 return items;
             });
@@ -461,7 +486,7 @@ public class OverlayManagerCommand(
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
         bool asChild = false,
-        string? parentId = "")
+        int? parentId = null)
     {
         return await GatherCollectionItems(
             MaintainerrPlexDataType.Seasons,
@@ -519,6 +544,7 @@ public class OverlayManagerCommand(
                     DataType = MaintainerrPlexDataType.Seasons,
                     LibraryName = libraryName,
                     LibraryId = librarySectionId,
+                    MaintainerrPlexType = MaintainerrPlexDataType.Seasons,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = $"Season{seasonIndex}"
@@ -554,7 +580,7 @@ public class OverlayManagerCommand(
                     .ToList();
 
                 items.AddRange(await GatherEpisodeCollectionItems(collectionTitle, deleteAfterDays,
-                    childrenMaintainerrMedia, true, plexId.ToString()));
+                    childrenMaintainerrMedia, true, plexId));
 
                 return items;
             });
@@ -565,7 +591,7 @@ public class OverlayManagerCommand(
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
         bool asChild = false,
-        string? parentId = "")
+        int? parentId = null)
     {
         return await GatherCollectionItems(
             MaintainerrPlexDataType.Episodes,
@@ -625,6 +651,7 @@ public class OverlayManagerCommand(
                     DataType = MaintainerrPlexDataType.Episodes,
                     LibraryName = libraryName,
                     LibraryId = librarySectionId,
+                    MaintainerrPlexType = MaintainerrPlexDataType.Episodes,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = $"S{seasonIndex}E{episodeIndex}"

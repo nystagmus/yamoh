@@ -1,7 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Spectre.Console;
 
-namespace YAMOH;
+namespace YAMOH.Infrastructure;
 
 public class YamohConfiguration
 {

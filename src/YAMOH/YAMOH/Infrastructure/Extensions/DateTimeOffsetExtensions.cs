@@ -1,4 +1,4 @@
-﻿namespace YAMOH.Infrastructure;
+﻿namespace YAMOH.Infrastructure.Extensions;
 
 public static class DateTimeOffsetExtensions
 {

@@ -23,11 +23,11 @@ namespace YAMOH.Models
             _collection.Upsert(item);
         }
 
-        public OverlayStateItem? GetByPlexId(string plexId) => _collection.FindById(plexId);
+        public OverlayStateItem? GetByPlexId(int plexId) => _collection.FindById(plexId);
 
         public IEnumerable<OverlayStateItem> GetAll() => _collection.FindAll();
 
-        public void Remove(string plexId)
+        public void Remove(int plexId)
         {
             _collection.Delete(plexId);
         }
@@ -37,11 +37,11 @@ namespace YAMOH.Models
             return _collection.Find(x => x.OverlayApplied);
         }
 
-        public IEnumerable<OverlayStateItem> GetPendingRestores(IEnumerable<string> currentPlexIds)
+        public IEnumerable<OverlayStateItem> GetPendingRestores(IEnumerable<int> currentPlexIds)
         {
             currentPlexIds = currentPlexIds.ToList();
             // Items that have overlays applied but are no longer in Maintainerr
-            return _collection.Find(x => x.OverlayApplied && !(currentPlexIds.Contains(x.PlexId) || currentPlexIds.Contains(x.ParentPlexId)));
+            return _collection.Find(x => x.OverlayApplied && !(currentPlexIds.Contains(x.PlexId) || (x.ParentPlexId != null && currentPlexIds.Contains(x.ParentPlexId.Value))));
         }
 
         public void Dispose()

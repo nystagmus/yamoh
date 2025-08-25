@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using System.Xml;
 using LukeHagar.PlexAPI.SDK;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -13,7 +14,10 @@ using YAMOH;
 using YAMOH.Clients;
 using YAMOH.Commands;
 using YAMOH.Infrastructure;
+using YAMOH.Infrastructure.Extensions;
 using YAMOH.Models;
+using YAMOH.Services;
+using Log = LukeHagar.PlexAPI.SDK.Log;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -27,6 +31,7 @@ builder.Logging.AddSerilog(new LoggerConfiguration()
     .CreateLogger());
 
 builder.Services.Configure<YamohConfiguration>(builder.Configuration.GetSection(YamohConfiguration.Position));
+builder.Services.Configure<ScheduleOptions>(builder.Configuration.GetSection(ScheduleOptions.Position));
 
 // Services
 builder.Services.AddHttpClient();
@@ -50,6 +55,9 @@ builder.Services.AddTransient<PlexAPI>(provider =>
     api.SDKConfiguration.Hooks.RegisterBeforeRequestHook(new PlexApiBeforeRequestHook());
     return api;
 });
+
+// Scheduler
+builder.Services.AddHostedService<SchedulerService>();
 
 var host = builder.Build();
 
@@ -79,9 +87,18 @@ foreach (var command in cliBuilder.GenerateCommandTree())
     rootCommand.Subcommands.Add(command);
 }
 
-rootCommand.SetAction(async (_, cancellationToken) =>
+rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     using var scope = host.Services.CreateScope();
+    var scheduleOptions = scope.ServiceProvider.GetRequiredService<IOptions<ScheduleOptions>>().Value;
+
+    if (scheduleOptions.Enabled)
+    {
+        AnsiConsole.MarkupLine("[green]Schedule is enabled.[/]");
+        await host.RunAsync(cancellationToken);
+        return;
+    }
+
     var commands = scope.ServiceProvider.GetServices<IYamohCommand>().ToList();
     var commandNames = commands.Select(c => c.CommandName).ToList();
 
