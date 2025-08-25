@@ -23,12 +23,13 @@ public class OverlayManagerCommand(
 {
     private GetAllLibrariesResponse? _allLibraries;
 
-    public string CommandName => "run";
+    public string CommandName => "update-maintainerr-overlays";
 
     public string CommandDescription =>
         "Main function of the application. Manage overlays based on Maintainerr status.";
 
     private const string BackupFileNameSuffix = ".original";
+    private const string KometaOverlayLabel = "Overlay";
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
@@ -172,6 +173,15 @@ public class OverlayManagerCommand(
                             File.Delete(result.FullName);
                             state.OverlayApplied = true;
                             state.PosterHash = null;
+
+                            if (item.KometaOverlayApplied)
+                            {
+                                if (!await plexClient.RemoveLabelKeyFromItem(item.LibraryId, item.PlexId, item.DataType,
+                                        KometaOverlayLabel))
+                                {
+                                    logger.LogInformation("Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",KometaOverlayLabel, item.PlexId);
+                                }
+                            }
                             appliedOverlays++;
                             logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}", item.PlexId);
                         }
@@ -357,6 +367,7 @@ public class OverlayManagerCommand(
                     PlexId = plexId,
                     DataType = MaintainerrPlexDataType.Movies,
                     LibraryName = libraryName,
+                    LibraryId = librarySectionId,
                     MediaFileRelativePath = mediaFilePath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = "poster",
@@ -411,6 +422,7 @@ public class OverlayManagerCommand(
                     PlexId = plexId,
                     DataType = MaintainerrPlexDataType.Shows,
                     LibraryName = libraryName,
+                    LibraryId = librarySectionId,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = "poster",
@@ -506,6 +518,7 @@ public class OverlayManagerCommand(
                     PlexId = plexId,
                     DataType = MaintainerrPlexDataType.Seasons,
                     LibraryName = libraryName,
+                    LibraryId = librarySectionId,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = $"Season{seasonIndex}"
@@ -611,6 +624,7 @@ public class OverlayManagerCommand(
                     PlexId = plexId,
                     DataType = MaintainerrPlexDataType.Episodes,
                     LibraryName = libraryName,
+                    LibraryId = librarySectionId,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
                     MediaFileName = $"S{seasonIndex}E{episodeIndex}"
@@ -673,6 +687,14 @@ public class OverlayManagerCommand(
                         var addDate = new DateTimeOffset(maintainerrItem.AddDate);
                         builtItem.HasExpiration = true;
                         builtItem.ExpirationDate = addDate.AddDays(deleteAfterDays);
+                    }
+
+                    // Get labels
+                    var labels = await plexClient.GetLabelsForPlexIdAsync(plexId);
+
+                    if (labels != null)
+                    {
+                        builtItem.KometaOverlayApplied = labels.Any(x => x.Tag != null && x.Tag.Equals(KometaOverlayLabel, StringComparison.OrdinalIgnoreCase));
                     }
 
                     items.Add(builtItem);

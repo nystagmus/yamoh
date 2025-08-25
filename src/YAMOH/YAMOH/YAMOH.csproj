@@ -32,7 +32,7 @@
         <Content Include="Fonts/**">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <None Update="state\overlay_state.db">
+        <None Update="state\yamoh_state.db">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>

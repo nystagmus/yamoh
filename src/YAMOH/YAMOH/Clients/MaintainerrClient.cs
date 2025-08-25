@@ -32,4 +32,20 @@ public class MaintainerrClient(
             return [];
         }
     }
+
+    public async Task<bool> ExecuteRules()
+    {
+        try
+        {
+            var url = this._config.MaintainerrUrl.TrimEnd('/') + "/api/rules/execute";
+
+            var result = await this._httpClient.PostAsync(url, new StringContent(""));
+            return result.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Exception encountered exceuting Maintainerr Rules");
+            return false;
+        }
+    }
 }
