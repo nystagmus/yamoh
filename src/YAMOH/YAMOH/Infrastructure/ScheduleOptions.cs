@@ -6,6 +6,5 @@ public class ScheduleOptions
 
     public bool Enabled { get; set; } = false;
     public bool RunOnStartup { get; set; } = false;
-    public ScheduleType ScheduleType { get; set; } = ScheduleType.Interval;
-    public string Value { get; set; } = "300";
+    public string OverlayManagerCronSchedule { get; set; } = "30 * * * *";
 }

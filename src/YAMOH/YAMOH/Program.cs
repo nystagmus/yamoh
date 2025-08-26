@@ -1,8 +1,8 @@
 ﻿using System.CommandLine;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
-using System.Xml;
 using LukeHagar.PlexAPI.SDK;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,7 +17,6 @@ using YAMOH.Infrastructure;
 using YAMOH.Infrastructure.Extensions;
 using YAMOH.Models;
 using YAMOH.Services;
-using Log = LukeHagar.PlexAPI.SDK.Log;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -51,14 +50,26 @@ builder.Services.AddTransient<PlexAPI>(provider =>
         throw new Exception("Yamoh configuration not found");
     }
 
-    var api = new PlexAPI(serverUrl: options.Value.PlexUrl, accessToken:options.Value.PlexToken);
+    var api = new PlexAPI(serverUrl: options.Value.PlexUrl, accessToken: options.Value.PlexToken);
     api.SDKConfiguration.Hooks.RegisterBeforeRequestHook(new PlexApiBeforeRequestHook());
     return api;
 });
 
 // Scheduler
-builder.Services.AddHostedService<SchedulerService>();
+//builder.Services.AddHostedService<SchedulerService>();
+var schedulerEnabled = builder.Configuration.GetSection(ScheduleOptions.Position).GetValue<bool>("Enabled");
 
+if (schedulerEnabled)
+{
+    var overlayManagerCronSchedule = builder.Configuration.GetSection(ScheduleOptions.Position)
+        .GetValue<string>("OverlayManagerCronSchedule");
+
+    if (overlayManagerCronSchedule != null)
+        builder.Services.AddCronJob<OverlayManagerJob>(overlayManagerCronSchedule);
+    else throw new Exception("Schedule is enabled but OverlayManagerCronSchedule not found or could not be parsed.");
+}
+
+builder.Services.AddHostedService<CronScheduler>();
 var host = builder.Build();
 
 ServiceLocator.SetServiceProvider(host.Services);
@@ -67,6 +78,7 @@ ServiceLocator.SetServiceProvider(host.Services);
 SpectreConsoleHelper.PrintSplashScreen();
 
 var config = host.Services.GetRequiredService<IOptions<YamohConfiguration>>().Value;
+
 try
 {
     config.AssertIsValid();
@@ -108,7 +120,8 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             .Title("[cyan]Select a command to run:[/]")
             .AddChoices(commandNames));
 
-    var selectedCommand = commands.FirstOrDefault(c => c.CommandName.Equals(selectedCommandName, StringComparison.OrdinalIgnoreCase));
+    var selectedCommand =
+        commands.FirstOrDefault(c => c.CommandName.Equals(selectedCommandName, StringComparison.OrdinalIgnoreCase));
 
     if (selectedCommand == null)
     {

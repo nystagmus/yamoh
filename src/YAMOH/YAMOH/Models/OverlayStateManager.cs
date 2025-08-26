@@ -7,7 +7,7 @@ namespace YAMOH.Models
         private readonly LiteDatabase _db;
         private readonly ILiteCollection<OverlayStateItem> _collection;
 
-        public OverlayStateManager(string dbPath = "state/yamoh_state.db")
+        public OverlayStateManager(string dbPath = "State/yamoh_state.db")
         {
             if (!File.Exists(dbPath))
             {

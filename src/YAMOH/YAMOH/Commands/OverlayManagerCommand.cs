@@ -223,7 +223,6 @@ public class OverlayManagerCommand(
             }
         }
 
-        SpectreConsoleHelper.PrintKometaAssetGuide();
         logger.LogInformation(
             "Overlay operations completed with {RemovedOverlays} removed, {AppliedOverlays} applied, {SkippedOverlays} skipped, and {SkippedDueToError} error skips",
             removedOverlays, appliedOverlays, skippedOverlays, skippedBecauseOfError);
