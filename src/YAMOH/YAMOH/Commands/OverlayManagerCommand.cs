@@ -51,7 +51,8 @@ public class OverlayManagerCommand(
 
         if (options.Value.RestoreOnly)
         {
-            logger.LogWarning("[yellow bold]Restore Only[/] was set in configuration. Will restore all posters back to original");
+            logger.LogWarning(
+                "[yellow bold]Restore Only[/] was set in configuration. Will restore all posters back to original");
             var restoreItems = overlayStateManager.GetAppliedOverlays().ToList();
 
             var count = 0;
@@ -66,6 +67,7 @@ public class OverlayManagerCommand(
                 overlayStateItem.OverlayApplied = false;
                 overlayStateManager.Upsert(overlayStateItem);
             }
+
             logger.LogInformation("Restored {Count} images back to their originals", count);
             return;
         }
@@ -122,13 +124,15 @@ public class OverlayManagerCommand(
                         continue;
                     }
 
-                    var backupFileFullPath = Path.GetFullPath(Path.Combine(backupAssetBasePath, item.MediaFileRelativePath));
+                    var backupFileFullPath =
+                        Path.GetFullPath(Path.Combine(backupAssetBasePath, item.MediaFileRelativePath));
                     var backupFileFullName = Path.GetFullPath(Path.Combine(backupFileFullPath, item.MediaFileName));
                     var backupFileDirectory = new DirectoryInfo(backupFileFullPath);
 
                     if (!backupFileDirectory.TryCreate())
                     {
-                        logger.LogInformation("Failed to create backup file directory. Path: {Path}", backupFileFullPath);
+                        logger.LogInformation("Failed to create backup file directory. Path: {Path}",
+                            backupFileFullPath);
                         skippedBecauseOfError++;
                         continue;
                     }
@@ -189,12 +193,18 @@ public class OverlayManagerCommand(
                                 if (!await plexClient.RemoveLabelKeyFromItem(item.LibraryId, item.PlexId, item.DataType,
                                         KometaOverlayLabel))
                                 {
-                                    logger.LogInformation("Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",KometaOverlayLabel, item.PlexId);
+                                    logger.LogInformation(
+                                        "Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",
+                                        KometaOverlayLabel, item.PlexId);
                                 }
+
                                 state.KometaLabelExists = false;
                             }
+
                             appliedOverlays++;
-                            logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}", item.PlexId);
+
+                            logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}",
+                                item.PlexId);
                         }
                         catch (Exception ex)
                         {
@@ -266,11 +276,15 @@ public class OverlayManagerCommand(
         {
             File.Copy(stateItem.OriginalPosterPath, stateItem.PosterPath, overwrite: true);
             File.Delete(stateItem.OriginalPosterPath);
-            if (!await plexClient.RemoveLabelKeyFromItem(stateItem.LibrarySectionId, stateItem.PlexId, stateItem.MaintainerrPlexType,
+
+            if (!await plexClient.RemoveLabelKeyFromItem(stateItem.LibrarySectionId, stateItem.PlexId,
+                    stateItem.MaintainerrPlexType,
                     KometaOverlayLabel))
             {
-                logger.LogInformation("Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",KometaOverlayLabel, stateItem.PlexId);
+                logger.LogInformation("Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",
+                    KometaOverlayLabel, stateItem.PlexId);
             }
+
             overlayStateManager.Remove(stateItem.PlexId);
             logger.LogInformation("Restored original poster for PlexId {StateItemPlexId}", stateItem.PlexId);
             return 1;
@@ -290,7 +304,8 @@ public class OverlayManagerCommand(
         return overlayText;
     }
 
-    private static FileInfo? GetOriginalPoster(DirectoryInfo backupDirectory, DirectoryInfo mediaFileDirectory, OverlayManagerItem item)
+    private static FileInfo? GetOriginalPoster(DirectoryInfo backupDirectory, DirectoryInfo mediaFileDirectory,
+        OverlayManagerItem item)
     {
         var backupFileList = backupDirectory.GetFiles();
 
@@ -343,6 +358,7 @@ public class OverlayManagerCommand(
             collectionTitle,
             deleteAfterDays,
             maintainerrMedia,
+            asChild: false,
             async (metadataResponse, plexId, _) =>
             {
                 var items = new List<OverlayManagerItem>();
@@ -408,6 +424,7 @@ public class OverlayManagerCommand(
             collectionTitle,
             deleteAfterDays,
             maintainerrMedia,
+            asChild: false,
             async (metadataResponse, plexId, addDate) =>
             {
                 var items = new List<OverlayManagerItem>();
@@ -492,6 +509,7 @@ public class OverlayManagerCommand(
             collectionTitle,
             deleteAfterDays,
             maintainerrMedia,
+            asChild,
             async (metadataResponse, plexId, addDate) =>
             {
                 var items = new List<OverlayManagerItem>();
@@ -597,6 +615,7 @@ public class OverlayManagerCommand(
             collectionTitle,
             deleteAfterDays,
             maintainerrMedia,
+            asChild,
             async (metadataResponse, plexId, _) =>
             {
                 var items = new List<OverlayManagerItem>();
@@ -672,6 +691,7 @@ public class OverlayManagerCommand(
         string? collectionTitle,
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
+        bool asChild,
         Func<GetMediaMetaDataResponse, int, DateTime, Task<IEnumerable<OverlayManagerItem>>> buildItems)
     {
         logger.LogInformation("Processing {DataType} collection: {Collection}", dataType, collectionTitle);
@@ -720,15 +740,18 @@ public class OverlayManagerCommand(
 
                     if (labels != null)
                     {
-                        builtItem.KometaOverlayApplied = labels.Any(x => x.Tag != null && x.Tag.Equals(KometaOverlayLabel, StringComparison.OrdinalIgnoreCase));
+                        builtItem.KometaOverlayApplied = labels.Any(x =>
+                            x.Tag != null && x.Tag.Equals(KometaOverlayLabel, StringComparison.OrdinalIgnoreCase));
                     }
 
                     items.Add(builtItem);
 
-                    logger.LogInformation(
-                        "Added {ItemType} item with PlexId: {PlexId}, LibraryName: {LibraryName}, ItemRelativePath: {ItemRelativePath}, Exp Date: {ExpirationDate}",
-                        builtItem.DataType, builtItem.PlexId, builtItem.LibraryName, builtItem.MediaFileRelativePath,
-                        builtItem.ExpirationDate);
+                    if (!asChild)
+                        logger.LogInformation(
+                            "Added {ItemType} item with PlexId: {PlexId}, LibraryName: {LibraryName}, ItemRelativePath: {ItemRelativePath}, Exp Date: {ExpirationDate}",
+                            builtItem.DataType, builtItem.PlexId, builtItem.LibraryName,
+                            builtItem.MediaFileRelativePath,
+                            builtItem.ExpirationDate);
                 }
             }
             catch (Exception ex)

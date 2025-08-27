@@ -21,7 +21,10 @@ using YAMOH.Models;
 using YAMOH.Services;
 using Log = Serilog.Log;
 
-AnsiConsole.Console.Profile.Width = Math.Min(120, Console.WindowWidth);
+if (AppEnvironment.IsDocker)
+{
+    AnsiConsole.Console.Profile.Width = 80;
+}
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()

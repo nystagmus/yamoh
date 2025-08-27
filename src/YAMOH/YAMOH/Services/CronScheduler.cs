@@ -15,24 +15,28 @@ public class CronScheduler(
         {
             var cronDescription = cronJob.CrontabSchedule.ToDescriptor();
             var typeName = cronJob.Type.Name;
-            AnsiConsole.MarkupLine($"[bold green]Scheduler found job [/][bold yellow]{typeName}[/][bold green] running[/][bold blue] {cronDescription}[/]");
+
+            AnsiConsole.MarkupLine(
+                $"[bold green]Scheduler found job [/][bold yellow]{typeName}[/][bold green] running[/][bold blue] {cronDescription}[/]");
         }
 
         await AnsiConsole.Status().StartAsync("[green]Starting Scheduler...[/]", async ctx =>
         {
+            // Create a map of the next upcoming entries
+            var runMap = GetJobRuns();
+
             ctx.Spinner(Spinner.Known.Star);
             ctx.SpinnerStyle(Style.Parse("green"));
-            ctx.Status(GetNextJobRunString());
+            ctx.Status(GetNextJobRunString(runMap));
 
             // Create a timer that has a resolution less than 60 seconds
             // Because cron has a resolution of a minute
             // So everything under will work
             using var tickTimer = new PeriodicTimer(TimeSpan.FromSeconds(30));
 
-            // Create a map of the next upcoming entries
-             var runMap = GetJobRuns();
+            var lastReportTime = DateTime.UtcNow;
 
-             while (await tickTimer.WaitForNextTickAsync(stoppingToken))
+            while (await tickTimer.WaitForNextTickAsync(stoppingToken))
             {
                 // Get UTC Now with minute resolution (remove microseconds and seconds)
                 var now = UtcNowMinutePrecision();
@@ -43,15 +47,24 @@ public class CronScheduler(
                 // Get the next run for the upcoming tick
                 runMap = GetJobRuns();
 
+                var timeSinceLastReport = now - lastReportTime;
+                var nextRunDeltaTicks = (runMap.OrderBy(x => x.Key).First().Key - now).Ticks;
+                var reportInterval = Math.Max(nextRunDeltaTicks / 100, TimeSpan.FromSeconds(30).Ticks); // report less frequently the further out it is.
+
+                if (timeSinceLastReport.Ticks <= reportInterval)
+                {
+                    continue;
+                }
+
                 // Update status
-                ctx.Status(GetNextJobRunString());
+                lastReportTime = now;
+                ctx.Status(GetNextJobRunString(runMap));
             }
         });
     }
 
-    private string GetNextJobRunString()
+    private string GetNextJobRunString(IReadOnlyDictionary<DateTime, List<Type>> runMap)
     {
-        var runMap = GetJobRuns();
         var utcNow = DateTime.UtcNow;
 
         if (runMap.Count == 0)
@@ -62,7 +75,9 @@ public class CronScheduler(
         var nextRun = runMap.OrderBy(x => x.Key).First();
         var nextRunNames = string.Join(',', nextRun.Value.Select(x => x.Name));
         var remainingTime = nextRun.Key.Subtract(utcNow).ToSmartString();
-        return $"[green]Waiting to run [/][yellow]{nextRunNames}[/][green] at [/][blue]{nextRun.Key} [/][green](in approx {remainingTime})[/]";
+
+        return
+            $"[green]Waiting to run [/][yellow]{nextRunNames}[/][green] at [/][blue]{nextRun.Key} [/][green](in approx {remainingTime})[/]";
     }
 
     private void RunActiveJobs(IReadOnlyDictionary<DateTime, List<Type>> runMap, DateTime now,
@@ -93,7 +108,8 @@ public class CronScheduler(
         {
             var utcNow = DateTime.UtcNow;
             var runDate = cron.CrontabSchedule.GetNextOccurrence(utcNow);
-            if(runDate != null)
+
+            if (runDate != null)
                 AddJobRun(runMap, runDate.Value, cron);
         }
 
