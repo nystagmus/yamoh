@@ -7,6 +7,9 @@
         <Nullable>enable</Nullable>
         <InvariantGlobalization>false</InvariantGlobalization>
         <UserSecretsId>0068d28c-09ca-48a2-be46-75ede89b213c</UserSecretsId>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <Description>Yet Another Maintainerr Overlay Helper</Description>
+        <Version>0.0.1-alpha</Version>
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,21 +25,16 @@
         <PackageReference Include="Serilog" Version="4.3.0"/>
         <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0"/>
         <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
+        <PackageReference Include="Serilog.Sinks.Spectre" Version="0.5.0" />
         <PackageReference Include="Spectre.Console" Version="0.50.0"/>
         <PackageReference Include="System.CommandLine" Version="2.0.0-beta7.25380.108"/>
         <PackageReference Include="vertical-spectreconsolelogger" Version="0.10.1-dev.20241201.35"/>
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="appsettings.json">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <Content Include="Fonts/**">
+        <Content Include="Defaults/**/*.*">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <None Update="state\yamoh_state.db">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
     </ItemGroup>
 
 </Project>

@@ -7,12 +7,15 @@ namespace YAMOH.Models
         private readonly LiteDatabase _db;
         private readonly ILiteCollection<OverlayStateItem> _collection;
 
-        public OverlayStateManager(string dbPath = "State/yamoh_state.db")
+        public OverlayStateManager(string? dbPath = null)
         {
+            dbPath ??= Path.Combine(Program.AppEnvironment.StateFolder, "yamoh_state.db");
+
             if (!File.Exists(dbPath))
             {
                 File.Create(dbPath).Close();
             }
+
             _db = new LiteDatabase(dbPath);
             _collection = _db.GetCollection<OverlayStateItem>("yamoh_state");
             _collection.EnsureIndex(x => x.PlexId);

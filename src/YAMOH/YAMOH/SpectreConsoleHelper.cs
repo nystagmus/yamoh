@@ -1,5 +1,6 @@
 using Spectre.Console;
 using System;
+using System.Reflection;
 using Spectre.Console.Rendering;
 
 namespace YAMOH;
@@ -8,9 +9,10 @@ public static class SpectreConsoleHelper
 {
     public static void PrintSplashScreen()
     {
-        var appName = "YAMOH";
-        var version = "v1.0.0"; // Optionally, retrieve from assembly
-        var description = "Yet Another Maintainerr Overlay Helper";
+        var assembly = Assembly.GetExecutingAssembly();
+        var appName = assembly.GetName().Name;
+        var version = assembly.GetName().Version;
+        var description = assembly.GetCustomAttribute<AssemblyDescriptionAttribute>()?.Description;
 
         var figlet = new FigletText(appName)
             .Centered()

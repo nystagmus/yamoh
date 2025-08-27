@@ -72,12 +72,7 @@ public class PlexClient
     public async Task<FileInfo?> DownloadPlexImageAsync(string urlStub)
     {
         // Ensure temp directory exists
-        var tempDirectory = this._config.TempImagePath;
-
-        if (!Path.IsPathRooted(tempDirectory))
-        {
-            tempDirectory = Path.Combine(this._config.AssetBasePath, tempDirectory);
-        }
+        var tempDirectory = this._config.TempImageFullPath;
 
         Directory.CreateDirectory(tempDirectory);
 

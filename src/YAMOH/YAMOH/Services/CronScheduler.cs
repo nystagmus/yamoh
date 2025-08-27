@@ -30,9 +30,9 @@ public class CronScheduler(
             using var tickTimer = new PeriodicTimer(TimeSpan.FromSeconds(30));
 
             // Create a map of the next upcoming entries
-            var runMap = new Dictionary<DateTime, List<Type>>();
+             var runMap = GetJobRuns();
 
-            while (await tickTimer.WaitForNextTickAsync(stoppingToken))
+             while (await tickTimer.WaitForNextTickAsync(stoppingToken))
             {
                 // Get UTC Now with minute resolution (remove microseconds and seconds)
                 var now = UtcNowMinutePrecision();

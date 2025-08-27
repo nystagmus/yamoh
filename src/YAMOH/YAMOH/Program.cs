@@ -8,26 +8,53 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.Spectre;
 using Spectre.Console;
-using Vertical.SpectreLogger;
 using YAMOH;
 using YAMOH.Clients;
 using YAMOH.Commands;
 using YAMOH.Infrastructure;
+using YAMOH.Infrastructure.EnvironmentUtility;
 using YAMOH.Infrastructure.Extensions;
 using YAMOH.Models;
 using YAMOH.Services;
+using Log = Serilog.Log;
+
+AnsiConsole.Console.Profile.Width = Math.Min(120, Console.WindowWidth);
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+    .WriteTo.Spectre(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(Path.Combine(AppEnvironment.LogFolder, "yamoh.log"), rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+Log.Information("Starting pre-build configuration..");
+
+// Check and initialize config
+var initializer = new AppFolderInitializer(AppEnvironment);
+initializer.Initialize();
+
+if (!initializer.CheckPermissions())
+{
+    Log.Information("Access not permitted to configuration directory {AppEnvironmentConfigFolder}. Check your configuration", AppEnvironment.ConfigFolder);
+    Environment.Exit(1);
+}
+initializer.CopyDefaultsIfMissing();
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// Configuration
+var appSettingsPath = Path.Combine(AppEnvironment.ConfigFolder, "appsettings.json");
+builder.Configuration.AddJsonFile(appSettingsPath, optional: false, reloadOnChange: false);
+builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
+
 // Logging
 builder.Logging.ClearProviders();
-builder.Logging.AddSpectreConsole();
-
-builder.Logging.AddSerilog(new LoggerConfiguration()
-    .MinimumLevel.Debug()
-    .WriteTo.File("yamoh.log", rollingInterval: RollingInterval.Day)
-    .CreateLogger());
+builder.Logging.AddSerilog(Log.Logger);
 
 builder.Services.Configure<YamohConfiguration>(builder.Configuration.GetSection(YamohConfiguration.Position));
 builder.Services.Configure<ScheduleOptions>(builder.Configuration.GetSection(ScheduleOptions.Position));
@@ -56,7 +83,6 @@ builder.Services.AddTransient<PlexAPI>(provider =>
 });
 
 // Scheduler
-//builder.Services.AddHostedService<SchedulerService>();
 var schedulerEnabled = builder.Configuration.GetSection(ScheduleOptions.Position).GetValue<bool>("Enabled");
 
 if (schedulerEnabled)
@@ -70,6 +96,8 @@ if (schedulerEnabled)
 }
 
 builder.Services.AddHostedService<CronScheduler>();
+
+Log.Information("Looking good, starting up!");
 var host = builder.Build();
 
 ServiceLocator.SetServiceProvider(host.Services);
@@ -81,7 +109,10 @@ var config = host.Services.GetRequiredService<IOptions<YamohConfiguration>>().Va
 
 try
 {
-    config.AssertIsValid();
+    if (!config.AssertIsValid())
+    {
+        Environment.Exit(1);
+    }
     config.PrintConfigTable();
 }
 catch (Exception ex)
@@ -150,6 +181,11 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
 
 var parseResult = rootCommand.Parse(args);
 return await parseResult.InvokeAsync();
+
+public partial class Program
+{
+    public static AppEnvironment AppEnvironment {get;} = new();
+}
 
 public static class ServiceLocator
 {

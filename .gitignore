@@ -44,3 +44,6 @@ Thumbs.db
 .env
 appsettings.*.json
 */.idea/*
+
+# compose files
+compose.yaml

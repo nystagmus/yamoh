@@ -34,7 +34,7 @@ public class OverlayManagerCommand(
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        var assetBasePath = options.Value.AssetBasePath;
+        var assetBasePath = options.Value.AssetBaseFullPath;
 
         if (!new DirectoryInfo(assetBasePath).HasWritePermissions())
         {
@@ -42,7 +42,7 @@ public class OverlayManagerCommand(
             return;
         }
 
-        var backupAssetBasePath = options.Value.BackupImagePath;
+        var backupAssetBasePath = options.Value.BackupImageFullPath;
 
         if (!new DirectoryInfo(backupAssetBasePath).HasWritePermissions())
         {
