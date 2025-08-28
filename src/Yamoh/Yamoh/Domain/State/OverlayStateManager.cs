@@ -1,6 +1,6 @@
 ﻿using LiteDB;
 
-namespace YAMOH.Domain.State
+namespace Yamoh.Domain.State
 {
     public class OverlayStateManager : IDisposable
     {

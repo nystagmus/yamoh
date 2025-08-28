@@ -1,6 +1,6 @@
 ﻿using Cronos;
 
-namespace YAMOH.Infrastructure.Extensions;
+namespace Yamoh.Infrastructure.Extensions;
 
 public static class CronExpressionExtensions
 {

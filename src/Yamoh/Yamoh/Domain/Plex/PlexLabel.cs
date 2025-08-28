@@ -1,4 +1,4 @@
-﻿namespace YAMOH.Domain.Plex;
+﻿namespace Yamoh.Domain.Plex;
 
 public class PlexLabel
 {

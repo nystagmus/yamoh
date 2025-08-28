@@ -2,9 +2,9 @@
 using ImageMagick.Drawing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using YAMOH.Infrastructure.Configuration;
+using Yamoh.Infrastructure.Configuration;
 
-namespace YAMOH.Infrastructure.ImageProcessing;
+namespace Yamoh.Infrastructure.ImageProcessing;
 
 public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayHelper> logger)
 {

@@ -1,7 +1,7 @@
 ﻿using LiteDB;
-using YAMOH.Domain.Maintainerr;
+using Yamoh.Domain.Maintainerr;
 
-namespace YAMOH.Domain.State
+namespace Yamoh.Domain.State
 {
     public class OverlayStateItem
     {

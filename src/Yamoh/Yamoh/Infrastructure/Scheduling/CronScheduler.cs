@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectre.Console;
-using YAMOH.Infrastructure.Extensions;
+using Yamoh.Infrastructure.Extensions;
 
-namespace YAMOH.Infrastructure.Scheduling;
+namespace Yamoh.Infrastructure.Scheduling;
 
 public class CronScheduler(
     IServiceProvider serviceProvider,

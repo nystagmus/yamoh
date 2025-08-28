@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace YAMOH.Infrastructure.EnvironmentUtility;
+namespace Yamoh.Infrastructure.EnvironmentUtility;
 
 public class AppEnvironment
 {

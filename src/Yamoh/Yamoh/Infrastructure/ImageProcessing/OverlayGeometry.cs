@@ -2,7 +2,7 @@
 using ImageMagick;
 using ImageMagick.Drawing;
 
-namespace YAMOH.Infrastructure.ImageProcessing;
+namespace Yamoh.Infrastructure.ImageProcessing;
 
 public class OverlayGeometry
 {

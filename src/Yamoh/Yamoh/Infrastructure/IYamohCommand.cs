@@ -1,4 +1,4 @@
-namespace YAMOH.Infrastructure;
+namespace Yamoh.Infrastructure;
 
 public interface IYamohCommand
 {

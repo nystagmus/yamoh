@@ -1,6 +1,6 @@
 ﻿using Serilog;
 
-namespace YAMOH.Infrastructure.EnvironmentUtility;
+namespace Yamoh.Infrastructure.EnvironmentUtility;
 
 public class AppFolderInitializer(AppEnvironment env)
 {

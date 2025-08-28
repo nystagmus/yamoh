@@ -1,10 +1,10 @@
 ﻿using System.Net.Sockets;
 using Serilog;
 using Spectre.Console;
-using YAMOH.Infrastructure.Extensions;
-using YAMOH.Ui;
+using Yamoh.Infrastructure.Extensions;
+using Yamoh.Ui;
 
-namespace YAMOH.Infrastructure.Configuration;
+namespace Yamoh.Infrastructure.Configuration;
 
 public class YamohConfiguration
 {

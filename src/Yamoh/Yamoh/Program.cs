@@ -11,17 +11,16 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Spectre;
 using Spectre.Console;
-using YAMOH;
-using YAMOH.Domain.State;
-using YAMOH.Features.OverlayManager;
-using YAMOH.Infrastructure;
-using YAMOH.Infrastructure.Configuration;
-using YAMOH.Infrastructure.EnvironmentUtility;
-using YAMOH.Infrastructure.Extensions;
-using YAMOH.Infrastructure.External;
-using YAMOH.Infrastructure.ImageProcessing;
-using YAMOH.Infrastructure.Scheduling;
-using YAMOH.Ui;
+using Yamoh.Domain.State;
+using Yamoh.Features.OverlayManager;
+using Yamoh.Infrastructure;
+using Yamoh.Infrastructure.Configuration;
+using Yamoh.Infrastructure.EnvironmentUtility;
+using Yamoh.Infrastructure.Extensions;
+using Yamoh.Infrastructure.External;
+using Yamoh.Infrastructure.ImageProcessing;
+using Yamoh.Infrastructure.Scheduling;
+using Yamoh.Ui;
 using Log = Serilog.Log;
 
 if (AppEnvironment.IsDocker)

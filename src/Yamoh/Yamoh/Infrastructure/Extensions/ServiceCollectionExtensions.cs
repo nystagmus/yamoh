@@ -2,9 +2,9 @@
 using Cronos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using YAMOH.Infrastructure.Scheduling;
+using Yamoh.Infrastructure.Scheduling;
 
-namespace YAMOH.Infrastructure.Extensions;
+namespace Yamoh.Infrastructure.Extensions;
 
 public static class ServiceCollectionExtensions
 {

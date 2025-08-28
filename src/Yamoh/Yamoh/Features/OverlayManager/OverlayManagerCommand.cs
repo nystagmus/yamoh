@@ -5,15 +5,15 @@ using LukeHagar.PlexAPI.SDK;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using YAMOH.Domain.Maintainerr;
-using YAMOH.Domain.State;
-using YAMOH.Infrastructure;
-using YAMOH.Infrastructure.Configuration;
-using YAMOH.Infrastructure.Extensions;
-using YAMOH.Infrastructure.External;
-using YAMOH.Infrastructure.ImageProcessing;
+using Yamoh.Domain.Maintainerr;
+using Yamoh.Domain.State;
+using Yamoh.Infrastructure;
+using Yamoh.Infrastructure.Configuration;
+using Yamoh.Infrastructure.Extensions;
+using Yamoh.Infrastructure.External;
+using Yamoh.Infrastructure.ImageProcessing;
 
-namespace YAMOH.Features.OverlayManager;
+namespace Yamoh.Features.OverlayManager;
 
 public class OverlayManagerCommand(
     ILogger<OverlayManagerCommand> logger,

@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using LukeHagar.PlexAPI.SDK.Hooks;
 
-namespace YAMOH.Infrastructure.External;
+namespace Yamoh.Infrastructure.External;
 
 public class PlexApiBeforeRequestHook : IBeforeRequestHook
 {

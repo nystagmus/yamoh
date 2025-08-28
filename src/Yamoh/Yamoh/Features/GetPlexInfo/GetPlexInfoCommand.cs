@@ -1,8 +1,8 @@
 ﻿using LukeHagar.PlexAPI.SDK;
 using Microsoft.Extensions.Logging;
-using YAMOH.Infrastructure;
+using Yamoh.Infrastructure;
 
-namespace YAMOH.Features.GetPlexInfo;
+namespace Yamoh.Features.GetPlexInfo;
 
 public class GetPlexInfoCommand(PlexAPI plexApi, ILogger<GetPlexInfoCommand> logger) : IYamohCommand
 {

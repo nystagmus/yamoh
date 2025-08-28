@@ -1,4 +1,4 @@
-﻿namespace YAMOH.Domain.Maintainerr;
+﻿namespace Yamoh.Domain.Maintainerr;
 
 public enum MaintainerrPlexDataType
 {

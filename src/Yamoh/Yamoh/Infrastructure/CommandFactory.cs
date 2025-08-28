@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace YAMOH.Infrastructure;
+namespace Yamoh.Infrastructure;
 
 public class CommandFactory(IEnumerable<IYamohCommand> yamohCommands, IServiceScopeFactory scopeFactory)
 {

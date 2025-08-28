@@ -2,10 +2,10 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using YAMOH.Domain.Maintainerr;
-using YAMOH.Infrastructure.Configuration;
+using Yamoh.Domain.Maintainerr;
+using Yamoh.Infrastructure.Configuration;
 
-namespace YAMOH.Infrastructure.External;
+namespace Yamoh.Infrastructure.External;
 
 public class MaintainerrClient(
     IOptions<YamohConfiguration> config,

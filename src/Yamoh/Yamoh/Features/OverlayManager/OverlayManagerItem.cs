@@ -1,6 +1,6 @@
-using YAMOH.Domain.Maintainerr;
+using Yamoh.Domain.Maintainerr;
 
-namespace YAMOH.Features.OverlayManager;
+namespace Yamoh.Features.OverlayManager;
 
 public class OverlayManagerItem
 {

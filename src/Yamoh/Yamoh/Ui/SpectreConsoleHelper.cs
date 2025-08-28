@@ -2,7 +2,7 @@ using System.Reflection;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
-namespace YAMOH.Ui;
+namespace Yamoh.Ui;
 
 public static class SpectreConsoleHelper
 {

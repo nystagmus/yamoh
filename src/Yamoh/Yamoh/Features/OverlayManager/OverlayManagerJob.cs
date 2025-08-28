@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using YAMOH.Infrastructure.Scheduling;
+using Yamoh.Infrastructure.Scheduling;
 
-namespace YAMOH.Features.OverlayManager;
+namespace Yamoh.Features.OverlayManager;
 
 public class OverlayManagerJob(IServiceProvider serviceProvider) : ICronJob
 {

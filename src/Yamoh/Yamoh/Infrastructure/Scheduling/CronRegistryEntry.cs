@@ -1,5 +1,5 @@
 ﻿using Cronos;
 
-namespace YAMOH.Infrastructure.Scheduling;
+namespace Yamoh.Infrastructure.Scheduling;
 
 public sealed record CronRegistryEntry(Type Type, CronExpression CrontabSchedule);

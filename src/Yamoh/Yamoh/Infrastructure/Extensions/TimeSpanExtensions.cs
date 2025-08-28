@@ -1,4 +1,4 @@
-﻿namespace YAMOH.Infrastructure.Extensions;
+﻿namespace Yamoh.Infrastructure.Extensions;
 
 public static class TimeSpanExtensions
 {

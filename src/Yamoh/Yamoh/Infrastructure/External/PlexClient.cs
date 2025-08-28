@@ -5,12 +5,12 @@ using System.Web;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using YAMOH.Domain.Maintainerr;
-using YAMOH.Domain.Plex;
-using YAMOH.Infrastructure.Configuration;
+using Yamoh.Domain.Maintainerr;
+using Yamoh.Domain.Plex;
+using Yamoh.Infrastructure.Configuration;
 using Directory = System.IO.Directory;
 
-namespace YAMOH.Infrastructure.External;
+namespace Yamoh.Infrastructure.External;
 
 public class PlexClient
 {

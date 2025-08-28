@@ -1,4 +1,4 @@
-﻿namespace YAMOH.Infrastructure.Scheduling;
+﻿namespace Yamoh.Infrastructure.Scheduling;
 
 public interface ICronJob
 {

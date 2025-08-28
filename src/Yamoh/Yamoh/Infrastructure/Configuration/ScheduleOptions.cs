@@ -1,4 +1,4 @@
-﻿namespace YAMOH.Infrastructure.Configuration;
+﻿namespace Yamoh.Infrastructure.Configuration;
 
 public class ScheduleOptions
 {
