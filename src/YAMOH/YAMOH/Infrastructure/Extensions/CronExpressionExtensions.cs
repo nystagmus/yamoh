@@ -1,9 +1,0 @@
-﻿using Cronos;
-
-namespace YAMOH.Infrastructure.Extensions;
-
-public static class CronExpressionExtensions
-{
-    public static string ToDescriptor(this CronExpression cronExpression)
-        => CronExpressionDescriptor.ExpressionDescriptor.GetDescription(cronExpression.ToString());
-}
