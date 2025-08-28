@@ -2,7 +2,7 @@
 using Cronos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using YAMOH.Services;
+using YAMOH.Infrastructure.Scheduling;
 
 namespace YAMOH.Infrastructure.Extensions;
 
