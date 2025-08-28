@@ -4,7 +4,7 @@ public class ScheduleOptions
 {
     public const string Position = "Schedule";
 
-    public bool Enabled { get; set; } = false;
-    public bool RunOnStartup { get; set; } = false;
-    public string OverlayManagerCronSchedule { get; set; } = "30 * * * *";
+    public bool Enabled { get; init; }
+    public bool RunOnStartup { get; init; }
+    public string OverlayManagerCronSchedule { get; init; } = "30 * * * *";
 }

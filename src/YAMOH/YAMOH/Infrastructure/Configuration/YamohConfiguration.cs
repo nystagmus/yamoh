@@ -10,14 +10,14 @@ public class YamohConfiguration
 {
     public const string Position = "Yamoh";
 
-    public string PlexUrl { get; set; } = string.Empty;
-    public string PlexToken { get; set; } = string.Empty;
-    public string MaintainerrUrl { get; set; } = string.Empty;
-    public bool UseAssetMode { get; set; } = true;
-    public string TempImagePath { get; set; } = string.Empty;
-    public string AssetBasePath { get; set; } = string.Empty;
-    public string BackupImagePath { get; set; } = string.Empty;
-    public string FontPath { get; set; } = "Fonts";
+    public string PlexUrl { get; init; } = string.Empty;
+    public string PlexToken { get; init; } = string.Empty;
+    public string MaintainerrUrl { get; init; } = string.Empty;
+    public bool UseAssetMode { get; init; } = true;
+    public string TempImagePath { get; init; } = string.Empty;
+    public string AssetBasePath { get; init; } = string.Empty;
+    public string BackupImagePath { get; init; } = string.Empty;
+    public string FontPath { get; init; } = "Fonts";
 
     public string FontFullPath =>
         Path.IsPathRooted(FontPath)
@@ -39,29 +39,29 @@ public class YamohConfiguration
             ? BackupImagePath
             : Path.Combine(Program.AppEnvironment.ConfigFolder, BackupImagePath);
 
-    public string FontName { get; set; } = "AvenirNextLTPro-Bold";
-    public string FontColor { get; set; } = "#ffffff";
-    public double FontTransparency { get; set; } = 1.00;
-    public string BackColor { get; set; } = "#B20710";
-    public double BackTransparency { get; set; } = 1.00;
-    public double FontSize { get; set; } = 65d;
-    public int Padding { get; set; } = 15;
-    public int BackRadius { get; set; } = 20;
-    public int HorizontalOffset { get; set; } = 0;
-    public string HorizontalAlign { get; set; } = "center";
-    public int VerticalOffset { get; set; } = 0;
-    public string VerticalAlign { get; set; } = "bottom";
-    public uint BackWidth { get; set; } = 1920;
-    public uint BackHeight { get; set; } = 100;
-    public string DateFormat { get; set; } = "MMM d";
-    public string OverlayText { get; set; } = "Leaving";
-    public bool EnableDaySuffix { get; set; } = true;
-    public bool EnableUppercase { get; set; } = true;
-    public string Language { get; set; } = "en-US";
-    public bool ReapplyOverlays { get; set; }
-    public bool OverlayShowSeasons { get; set; }
-    public bool OverlaySeasonEpisodes { get; set; }
-    public bool RestoreOnly { get; set; }
+    public string FontName { get; init; } = "AvenirNextLTPro-Bold";
+    public string FontColor { get; init; } = "#ffffff";
+    public double FontTransparency { get; init; } = 1.00;
+    public string BackColor { get; init; } = "#B20710";
+    public double BackTransparency { get; init; } = 1.00;
+    public double FontSize { get; init; } = 65d;
+    public int Padding { get; init; } = 15;
+    public int BackRadius { get; init; } = 20;
+    public int HorizontalOffset { get; init; }
+    public string HorizontalAlign { get; init; } = "center";
+    public int VerticalOffset { get; init; }
+    public string VerticalAlign { get; init; } = "bottom";
+    public uint BackWidth { get; init; } = 1920;
+    public uint BackHeight { get; init; } = 100;
+    public string DateFormat { get; init; } = "MMM d";
+    public string OverlayText { get; init; } = "Leaving";
+    public bool EnableDaySuffix { get; init; } = true;
+    public bool EnableUppercase { get; init; } = true;
+    public string Language { get; init; } = "en-US";
+    public bool ReapplyOverlays { get; init; }
+    public bool OverlayShowSeasons { get; init; }
+    public bool OverlaySeasonEpisodes { get; init; }
+    public bool RestoreOnly { get; init; }
 
     public bool AssertIsValid()
     {
@@ -120,10 +120,10 @@ public class YamohConfiguration
             if (VerticalOffset is < -1000 or > 1000)
                 errors.Add(nameof(VerticalOffset), "VerticalOffset must be between -1000 and 1000.");
 
-            if (BackWidth is < 0 or > 10000)
+            if (BackWidth > 10000)
                 errors.Add(nameof(BackWidth), "BackWidth must be between 0 and 10000.");
 
-            if (BackHeight is < 0 or > 10000)
+            if (BackHeight > 10000)
                 errors.Add(nameof(BackHeight), "BackHeight must be between 0 and 10000.");
 
             if (errors.Count <= 0)
@@ -149,7 +149,7 @@ public class YamohConfiguration
         }
     }
 
-    private void ValidateUrl(string url, string propertyName, Dictionary<string, string> errors)
+    private static void ValidateUrl(string url, string propertyName, Dictionary<string, string> errors)
     {
         if (string.IsNullOrWhiteSpace(url))
         {
@@ -189,7 +189,7 @@ public class YamohConfiguration
         }
     }
 
-    private void ValidatePathExists(string path, string propertyName, Dictionary<string, string> errors)
+    private static void ValidatePathExists(string path, string propertyName, Dictionary<string, string> errors)
     {
         if (errors.ContainsKey(propertyName)) return;
 
@@ -199,7 +199,7 @@ public class YamohConfiguration
         }
     }
 
-    private void ValidateOrCreatePathExists(string path, string propertyName, Dictionary<string, string> errors)
+    private static void ValidateOrCreatePathExists(string path, string propertyName, Dictionary<string, string> errors)
     {
         if (errors.ContainsKey(propertyName)) return;
 
@@ -212,13 +212,13 @@ public class YamohConfiguration
         {
             Directory.CreateDirectory(path);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             errors.Add(propertyName, $"Could not create {propertyName} Path. Path: {path}");
         }
     }
 
-    private void ValidatePathIsWriteable(string path, string propertyName, Dictionary<string, string> errors)
+    private static void ValidatePathIsWriteable(string path, string propertyName, Dictionary<string, string> errors)
     {
         if (errors.ContainsKey(propertyName)) return;
 
@@ -228,7 +228,7 @@ public class YamohConfiguration
         }
     }
 
-    private void ValidatePathFormat(string path, string propertyName, Dictionary<string, string> errors)
+    private static void ValidatePathFormat(string path, string propertyName, Dictionary<string, string> errors)
     {
         if (errors.ContainsKey(propertyName)) return;
 

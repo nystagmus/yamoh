@@ -43,7 +43,7 @@ public class PlexClient
         return uriBuilder.Uri;
     }
 
-    private string RemoveQueryParameter(string urlString, string parameterToRemove)
+    private static string RemoveQueryParameter(string urlString, string parameterToRemove)
     {
         try
         {
@@ -62,10 +62,10 @@ public class PlexClient
         }
     }
 
-    private string RemovePlexAuthToken(string urlString)
+    private static string RemovePlexAuthToken(string urlString)
         => RemoveQueryParameter(urlString, "X-Plex-Token");
 
-    private string RemovePlexAuthToken(Uri url)
+    private static string RemovePlexAuthToken(Uri url)
         => RemovePlexAuthToken(url.ToString());
 
     public async Task<FileInfo?> DownloadPlexImageAsync(string urlStub)
@@ -111,7 +111,6 @@ public class PlexClient
     }
 
     // The SDK implementation was broken when this was originally developed
-
     public async Task<GetMetadataChildrenResponseBody?> GetMetadataChildrenAsync(int ratingKey)
     {
         // Build full URL
@@ -127,7 +126,8 @@ public class PlexClient
         catch (Exception ex)
         {
             // Log error (strip the params because the only param is our auth key
-            this._logger.LogError(ex, "Failed to download Plex Metadata Children: {FullUrl}", RemovePlexAuthToken(fullUrl));
+            this._logger.LogError(ex, "Failed to download Plex Metadata Children: {FullUrl}",
+                RemovePlexAuthToken(fullUrl));
             return null;
         }
     }
@@ -151,11 +151,14 @@ public class PlexClient
         }
     }
 
-    public async Task<bool> RemoveLabelKeyFromItem(long librarySectionId, int plexId, MaintainerrPlexDataType type, string labelTag)
+    public async Task<bool> RemoveLabelKeyFromItem(long librarySectionId, int plexId, MaintainerrPlexDataType type,
+        string labelTag)
     {
         // PUT http://{ip_address}:32400/library/sections/{library_id}/all?type=1&id={movie_id}&includeExternalMedia={include_external_media}&{parameter_values}&X-Plex-Token={plex_token}
         var plexDataType = (int)type;
-        var urlStub = $"/library/sections/{librarySectionId}/all?type={plexDataType}&id={plexId}&includeExternalMedia=1&label[].tag.tag-={labelTag}";
+
+        var urlStub =
+            $"/library/sections/{librarySectionId}/all?type={plexDataType}&id={plexId}&includeExternalMedia=1&label[].tag.tag-={labelTag}";
         var fullUrl = BuildPlexUrl(urlStub);
 
         try
