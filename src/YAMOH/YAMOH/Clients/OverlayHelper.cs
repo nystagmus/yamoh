@@ -2,8 +2,9 @@
 using ImageMagick.Drawing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using YAMOH.Infrastructure;
 
-namespace YAMOH.Infrastructure;
+namespace YAMOH.Clients;
 
 public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayHelper> logger)
 {
@@ -32,7 +33,7 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
         var cfg = config.Value;
         fontColor ??= cfg.FontColor;
         backColor ??= cfg.BackColor;
-        fontPath ??= cfg.FontPath;
+        fontPath ??= cfg.FontFullPath;
         fontName ??= cfg.FontName;
         fontSize ??= cfg.FontSize;
         padding ??= cfg.Padding;
@@ -58,7 +59,12 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
 
             if (!File.Exists(fontFile))
             {
-                fontFile = Path.Combine(Directory.GetCurrentDirectory(), "Fonts", "AvenirNextLTPro-Bold.ttf");
+                fontFile = Path.Combine(cfg.FontFullPath, "AvenirNextLTPro-Bold.ttf");
+            }
+
+            if (!File.Exists(fontFile))
+            {
+                throw new FileNotFoundException($"Could not locate suitable font file using {fontPath}/{fontName}.ttf");
             }
 
             // calculate scaling
@@ -166,7 +172,7 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             // debugDrawables.Draw(image);
 
             var imagePathInfo = new FileInfo(imagePath);
-            var tempPath = config.Value.TempImagePath;
+            var tempPath = config.Value.TempImageFullPath;
             var tempImagePath = Path.Combine(tempPath, $"{plexId}_temp.{imagePathInfo.Extension}");
             image.Write(tempImagePath);
 

@@ -14,5 +14,8 @@ public class OverlayManagerItem
     public bool HasExpiration { get; set; }
     public DateTimeOffset ExpirationDate { get; set; }
     public bool IsChild { get; set; }
-    public string? ParentPlexId { get; set; }
+    public int? ParentPlexId { get; set; }
+    public bool KometaOverlayApplied { get; set; }
+    public required long LibraryId { get; set; }
+    public required MaintainerrPlexDataType MaintainerrPlexType { get; set; }
 }

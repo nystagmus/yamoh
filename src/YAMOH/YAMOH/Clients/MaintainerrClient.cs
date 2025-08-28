@@ -2,6 +2,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using YAMOH.Infrastructure;
 using YAMOH.Models;
 using YAMOH.Models.Maintainerr;
 
@@ -30,6 +31,22 @@ public class MaintainerrClient(
         {
             logger.LogError(ex, "Exception encountered fetching MaintainerrCollections");
             return [];
+        }
+    }
+
+    public async Task<bool> ExecuteRules()
+    {
+        try
+        {
+            var url = this._config.MaintainerrUrl.TrimEnd('/') + "/api/rules/execute";
+
+            var result = await this._httpClient.PostAsync(url, new StringContent(""));
+            return result.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Exception encountered exceuting Maintainerr Rules");
+            return false;
         }
     }
 }

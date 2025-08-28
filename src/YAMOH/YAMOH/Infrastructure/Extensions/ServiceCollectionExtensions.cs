@@ -1,7 +1,10 @@
 ﻿using System.Reflection;
+using Cronos;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using YAMOH.Services;
 
-namespace YAMOH.Infrastructure;
+namespace YAMOH.Infrastructure.Extensions;
 
 public static class ServiceCollectionExtensions
 {
@@ -43,6 +46,23 @@ public static class ServiceCollectionExtensions
                 services.Add(new ServiceDescriptor(targetType, implementation, lifetime));
             }
         }
+
+        return services;
+    }
+
+    public static IServiceCollection AddCronJob<T>(this IServiceCollection services, string cronExpression)
+        where T : class, ICronJob
+    {
+        if (!CronExpression.TryParse(cronExpression, out var cron))
+        {
+            throw new ArgumentException("Invalid cron expression", nameof(cronExpression));
+        }
+
+        var entry = new CronRegistryEntry(typeof(T), cron);
+
+        services.AddHostedService<CronScheduler>();
+        services.TryAddSingleton<T>();
+        services.AddSingleton(entry);
 
         return services;
     }

@@ -1,17 +1,4 @@
-﻿namespace YAMOH.Infrastructure;
-
-public static class FileInfoExtensions
-{
-    public static bool IsImageByExtension(this FileInfo fileInfo)
-    {
-        var extension = fileInfo.Extension.ToLowerInvariant();
-        var imageExtensions = new HashSet<string?>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"
-        };
-        return imageExtensions.Contains(extension);
-    }
-}
+﻿namespace YAMOH.Infrastructure.Extensions;
 
 public static class DirectoryInfoExtensions
 {

@@ -2,31 +2,65 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using LukeHagar.PlexAPI.SDK;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.Spectre;
 using Spectre.Console;
-using Vertical.SpectreLogger;
 using YAMOH;
 using YAMOH.Clients;
 using YAMOH.Commands;
 using YAMOH.Infrastructure;
+using YAMOH.Infrastructure.EnvironmentUtility;
+using YAMOH.Infrastructure.Extensions;
 using YAMOH.Models;
+using YAMOH.Services;
+using Log = Serilog.Log;
+
+if (AppEnvironment.IsDocker)
+{
+    AnsiConsole.Console.Profile.Width = 80;
+}
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+    .WriteTo.Spectre(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(Path.Combine(AppEnvironment.LogFolder, "yamoh.log"), rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+Log.Information("Starting pre-build configuration..");
+
+// Check and initialize config
+var initializer = new AppFolderInitializer(AppEnvironment);
+initializer.Initialize();
+
+if (!initializer.CheckPermissions())
+{
+    Log.Information("Access not permitted to configuration directory {AppEnvironmentConfigFolder}. Check your configuration", AppEnvironment.ConfigFolder);
+    Environment.Exit(1);
+}
+initializer.CopyDefaultsIfMissing();
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// Configuration
+var appSettingsPath = Path.Combine(AppEnvironment.ConfigFolder, "appsettings.json");
+builder.Configuration.AddJsonFile(appSettingsPath, optional: false, reloadOnChange: false);
+builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
+
 // Logging
 builder.Logging.ClearProviders();
-builder.Logging.AddSpectreConsole();
-
-builder.Logging.AddSerilog(new LoggerConfiguration()
-    .MinimumLevel.Debug()
-    .WriteTo.File("yamoh.log", rollingInterval: RollingInterval.Day)
-    .CreateLogger());
+builder.Logging.AddSerilog(Log.Logger);
 
 builder.Services.Configure<YamohConfiguration>(builder.Configuration.GetSection(YamohConfiguration.Position));
+builder.Services.Configure<ScheduleOptions>(builder.Configuration.GetSection(ScheduleOptions.Position));
 
 // Services
 builder.Services.AddHttpClient();
@@ -46,11 +80,27 @@ builder.Services.AddTransient<PlexAPI>(provider =>
         throw new Exception("Yamoh configuration not found");
     }
 
-    var api = new PlexAPI(serverUrl: options.Value.PlexUrl, accessToken:options.Value.PlexToken);
+    var api = new PlexAPI(serverUrl: options.Value.PlexUrl, accessToken: options.Value.PlexToken);
     api.SDKConfiguration.Hooks.RegisterBeforeRequestHook(new PlexApiBeforeRequestHook());
     return api;
 });
 
+// Scheduler
+var schedulerEnabled = builder.Configuration.GetSection(ScheduleOptions.Position).GetValue<bool>("Enabled");
+
+if (schedulerEnabled)
+{
+    var overlayManagerCronSchedule = builder.Configuration.GetSection(ScheduleOptions.Position)
+        .GetValue<string>("OverlayManagerCronSchedule");
+
+    if (overlayManagerCronSchedule != null)
+        builder.Services.AddCronJob<OverlayManagerJob>(overlayManagerCronSchedule);
+    else throw new Exception("Schedule is enabled but OverlayManagerCronSchedule not found or could not be parsed.");
+}
+
+builder.Services.AddHostedService<CronScheduler>();
+
+Log.Information("Looking good, starting up!");
 var host = builder.Build();
 
 ServiceLocator.SetServiceProvider(host.Services);
@@ -59,9 +109,13 @@ ServiceLocator.SetServiceProvider(host.Services);
 SpectreConsoleHelper.PrintSplashScreen();
 
 var config = host.Services.GetRequiredService<IOptions<YamohConfiguration>>().Value;
+
 try
 {
-    config.AssertIsValid();
+    if (!config.AssertIsValid())
+    {
+        Environment.Exit(1);
+    }
     config.PrintConfigTable();
 }
 catch (Exception ex)
@@ -79,9 +133,18 @@ foreach (var command in cliBuilder.GenerateCommandTree())
     rootCommand.Subcommands.Add(command);
 }
 
-rootCommand.SetAction(async (_, cancellationToken) =>
+rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     using var scope = host.Services.CreateScope();
+    var scheduleOptions = scope.ServiceProvider.GetRequiredService<IOptions<ScheduleOptions>>().Value;
+
+    if (scheduleOptions.Enabled)
+    {
+        AnsiConsole.MarkupLine("[green]Schedule is enabled.[/]");
+        await host.RunAsync(cancellationToken);
+        return;
+    }
+
     var commands = scope.ServiceProvider.GetServices<IYamohCommand>().ToList();
     var commandNames = commands.Select(c => c.CommandName).ToList();
 
@@ -91,7 +154,8 @@ rootCommand.SetAction(async (_, cancellationToken) =>
             .Title("[cyan]Select a command to run:[/]")
             .AddChoices(commandNames));
 
-    var selectedCommand = commands.FirstOrDefault(c => c.CommandName.Equals(selectedCommandName, StringComparison.OrdinalIgnoreCase));
+    var selectedCommand =
+        commands.FirstOrDefault(c => c.CommandName.Equals(selectedCommandName, StringComparison.OrdinalIgnoreCase));
 
     if (selectedCommand == null)
     {
@@ -120,6 +184,11 @@ rootCommand.SetAction(async (_, cancellationToken) =>
 
 var parseResult = rootCommand.Parse(args);
 return await parseResult.InvokeAsync();
+
+public partial class Program
+{
+    public static AppEnvironment AppEnvironment {get;} = new();
+}
 
 public static class ServiceLocator
 {
