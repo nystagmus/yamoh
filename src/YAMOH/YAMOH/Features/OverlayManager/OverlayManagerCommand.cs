@@ -87,6 +87,7 @@ public class OverlayManagerCommand(
         var appliedOverlays = 0;
         var skippedOverlays = 0;
         var skippedBecauseOfError = 0;
+        var overlaySettings = AddOverlaySettings.FromConfig(options);
 
         // For each collection, process overlays and update state
         foreach (var collection in collections.Where(collection => collection.IsActive))
@@ -178,8 +179,7 @@ public class OverlayManagerCommand(
 
                     // Apply overlay
                     var overlayText = GetOverlayText(item);
-
-                    var result = overlayHelper.AddOverlay(item.PlexId, mediaFileFullName, overlayText);
+                    var result = overlayHelper.AddOverlay(item.PlexId, mediaFileFullName, overlayText, overlaySettings);
 
                     if (result is { Exists: true })
                     {
