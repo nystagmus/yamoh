@@ -9,15 +9,15 @@ public class AddOverlaySettings
     public required string BackColor { get; init; }
     public required string FontPath { get; init; }
     public required string FontName { get; init; }
-    public double FontSize { get; init; }
-    public int Padding { get; init; }
+    public double FontSize { get; set; }
+    public int Padding { get; set; }
     public int BackRadius { get; init; }
-    public int HorizontalOffset { get; init; }
-    public required string HorizontalAlign { get; init; }
-    public int VerticalOffset { get; init; }
-    public required string VerticalAlign { get; init; }
-    public uint BackWidth { get; init; }
-    public uint BackHeight { get; init; }
+    public int HorizontalOffset { get; set; }
+    public required string HorizontalAlign { get; set; }
+    public int VerticalOffset { get; set; }
+    public required string VerticalAlign { get; set; }
+    public uint BackWidth { get; set; }
+    public uint BackHeight { get; set; }
     public double FontTransparency { get; init; }
     public double BackTransparency { get; init; }
 
