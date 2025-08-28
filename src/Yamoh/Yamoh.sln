@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YAMOH", "YAMOH\YAMOH.csproj", "{4896D055-C6F3-41DD-86F1-B2ADD0E15C4D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yamoh", "Yamoh\Yamoh.csproj", "{4896D055-C6F3-41DD-86F1-B2ADD0E15C4D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4D013929-A37F-4390-A15A-8A807ABDB9EC}"
 	ProjectSection(SolutionItems) = preProject

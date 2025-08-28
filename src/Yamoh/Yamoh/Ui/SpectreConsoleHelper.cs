@@ -9,7 +9,7 @@ public static class SpectreConsoleHelper
     public static void PrintSplashScreen()
     {
         var assembly = Assembly.GetExecutingAssembly();
-        var appName = assembly.GetName().Name;
+        var appName = assembly.GetName().Name ?? "Yamoh";
         var version = assembly.GetName().Version;
         var description = assembly.GetCustomAttribute<AssemblyDescriptionAttribute>()?.Description;
 
