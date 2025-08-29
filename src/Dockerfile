@@ -1,5 +1,11 @@
 ﻿FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
-USER $APP_UID
+ARG PUID=0
+ARG PGID=0
+ENV PUID=$PUID
+ENV PGID=$PGID
+RUN groupadd -g $PGID appgroup && useradd -u $PUID -g appgroup -s /bin/bash appuser
+
+USER appuser
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build

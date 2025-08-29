@@ -8,6 +8,7 @@ public class AppFolderInitializer(AppEnvironment env)
     {
         Directory.CreateDirectory(env.ConfigFolder);
         Directory.CreateDirectory(env.DefaultsFolder);
+        Directory.CreateDirectory(env.StateFolder);
     }
 
     public bool CheckPermissions()
