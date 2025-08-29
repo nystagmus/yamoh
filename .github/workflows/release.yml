@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-test-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          dotnet-version: '8.0.x'
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+      - name: Install MinVer
+        run: dotnet tool install --global minver-cli
+      - name: Determine versions
+        shell: pwsh
+        run: |
+          # Read settings from Custom.Build.props
+          [xml]$xml = Get-Content ./src/Custom.Build.props
+          $minMajorMinor = $xml.selectNodes('/Project/PropertyGroup/MinVerMinimumMajorMinor').InnerText
+          $autoIncrement = $xml.selectNodes('/Project/PropertyGroup/MinVerAutoIncrement').InnerText
+          echo "MinVerMinimumMajorMinor=$minMajorMinor, MinVerAutoIncrement=$autoIncrement"
+          if (-not ($minMajorMinor -and $autoIncrement)) {
+            throw "Missing MinVer settings in Custom.Build.props"
+          }
+
+          # Execute MinVer
+          echo "MinVerVersion=$(minver --minimum-major-minor $minMajorMinor --auto-increment $autoIncrement)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
+      - name: Build Docker Image
+        run: docker build -t yamoh:${{ github.ref_name }} .
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish Docker Image
+        run: docker push yamoh:${{ github.ref_name }}
+      - name: Publish Standalone Releases
+        run: |
+          dotnet publish -c Release -r win-x64 --self-contained true -o release/win-x64
+          dotnet publish -c Release -r linux-x64 --self-contained true -o release/linux-x64
+          dotnet publish -c Release -r osx-x64 --self-contained true -o release/osx-x64
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: yamoh-release
+          path: release/
