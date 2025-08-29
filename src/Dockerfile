@@ -9,7 +9,7 @@ COPY ["src/Yamoh/Yamoh.csproj", "Yamoh/"]
 RUN dotnet restore "Yamoh/Yamoh.csproj"
 COPY src/Yamoh/. ./Yamoh/
 COPY src/Custom.Build.props ./
-COPY src/global.json ./
+COPY global.json ./
 WORKDIR "/src/Yamoh"
 RUN dotnet build "./Yamoh.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
