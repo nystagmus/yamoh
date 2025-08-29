@@ -47,9 +47,7 @@ jobs:
           }
 
           # Execute MinVer
-          $version = minver --minimum-major-minor $minMajorMinor --auto-increment $autoIncrement
-          echo "MinVerVersion=$version" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
-          echo "::set-output name=version::$version"
+          echo "MinVerVersion=$(minver --minimum-major-minor $minMajorMinor --auto-increment $autoIncrement)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
 
       - name: Build Docker Image
         run: docker build -f src/Dockerfile -t ${{ secrets.DOCKERHUB_USERNAME }}/yamoh:${{ github.ref_name }} .
@@ -71,56 +69,21 @@ jobs:
 
       - name: Publish Standalone Releases
         run: |
-          dotnet publish src -c Release -r win-x64 --self-contained true --property:PublishDir=release/win-x64
-          cd release/win-x64 && zip -r ../yamoh-win-x64-${{ steps.minver.outputs.version }}.zip . && cd ../..
-          dotnet publish src -c Release -r linux-x64 --self-contained true --property:PublishDir=release/linux-x64
-          cd release/linux-x64 && zip -r ../yamoh-linux-x64-${{ steps.minver.outputs.version }}.zip . && cd ../..
-          dotnet publish src -c Release -r osx-x64 --self-contained true --property:PublishDir=release/osx-x64
-          cd release/osx-x64 && zip -r ../yamoh-osx-x64-${{ steps.minver.outputs.version }}.zip . && cd ../..
+          dotnet publish src/Yamoh/Yamoh.csproj -c Release -r win-x64 --self-contained true -o release/win-x64
+          dotnet publish src/Yamoh/Yamoh.csproj -c Release -r linux-x64 --self-contained true -o release/linux-x64
+          dotnet publish src/Yamoh/Yamoh.csproj -c Release -r osx-x64 --self-contained true -o release/osx-x64
+          cd release/win-x64 && zip -r ../yamoh-win-x64-${{ github.ref_name }}.zip . && cd ../..
+          cd release/linux-x64 && zip -r ../yamoh-linux-x64-${{ github.ref_name }}.zip . && cd ../..
+          cd release/osx-x64 && zip -r ../yamoh-osx-x64-${{ github.ref_name }}.zip . && cd ../..
 
-      - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: yamoh-release
-          path: release/
-
-      - name: Create GitHub Release (Draft)
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create Draft Release and Upload Assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          draft: true
-          prerelease: false
-
-      - name: Upload Windows Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/yamoh-win-x64-${{ steps.minver.outputs.version }}.zip
-          asset_name: yamoh-win-x64-${{ steps.minver.outputs.version }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload Linux Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/yamoh-linux-x64-${{ steps.minver.outputs.version }}.zip
-          asset_name: yamoh-linux-x64-${{ steps.minver.outputs.version }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload macOS Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/yamoh-osx-x64-${{ steps.minver.outputs.version }}.zip
-          asset_name: yamoh-osx-x64-${{ steps.minver.outputs.version }}.zip
-          asset_content_type: application/zip
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --draft \
+            --title "Release ${{ github.ref_name }}" \
+            release/yamoh-win-x64-${{ github.ref_name }}.zip \
+            release/yamoh-linux-x64-${{ github.ref_name }}.zip \
+            release/yamoh-osx-x64-${{ github.ref_name }}.zip
