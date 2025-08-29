@@ -58,14 +58,13 @@ services:
 
 ## Configuration Table
 
-> **Note:** All paths (such as TempImagePath, AssetBasePath, BackupImagePath, FontPath) can be specified as either relative to the config directory or as absolute paths.
+> [!Important]
+> All paths (such as TempImagePath, AssetBasePath, BackupImagePath, FontPath) can be specified as either relative to the config directory or as absolute paths.
 >
 > The config directory is determined at runtime as follows:
 > - **Docker:** `/config/`
 > - **Windows:** `%ProgramData%\YAMOH\Config` (typically `C:\ProgramData\YAMOH\Config`)
 > - **Linux/macOS:** `$HOME/.config/YAMOH/Config` (typically `/home/<user>/.config/YAMOH/Config` or `/Users/<user>/.config/YAMOH/Config`)
->
-> The config directory is initialized in `AppFolderInitializer.cs` and can be found in the `ConfigFolder` property of the `AppEnvironment` class.
 
 | Config Key                | Environment Variable         | Default Value         | Description |
 |---------------------------|-----------------------------|-----------------------|-------------|
