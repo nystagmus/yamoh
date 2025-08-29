@@ -1,4 +1,4 @@
-# Yamoh - Maintainerr Overlay Helper
+# Yamoh - Yet Another Maintainerr Overlay Helper
 
 Yamoh is a C#/.NET 8+ console application that automates poster overlays for Plex media collections managed by Maintainerr.
 
