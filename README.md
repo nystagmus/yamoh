@@ -2,6 +2,11 @@
 
 Yamoh is a C#/.NET 8+ console application that automates poster overlays for Plex media collections managed by Maintainerr.
 
+>[!Important]
+> **Inspiration:**
+> Yamoh was inspired by [gssariev/maintainerr-overlay-helperr](https://github.com/gssariev/maintainerr-overlay-helperr) and shares a similar goal of automating poster overlays for Plex collections managed by Maintainerr.
+> **Key Difference:** Yamoh manages image assets on disk, building a directory structure that mirrors your Plex library for Kometa compatibility, rather than uploading overlays directly to Plex. (Direct Plex upload support may be added in the future.)
+
 ## Features
 - Periodically polls the Maintainerr API (`/api/collections`) to get collections and media items.
 - For each media item, uses its Plex ID to query the Plex API for metadata (library name, folder, media file path).
@@ -14,6 +19,12 @@ Yamoh is a C#/.NET 8+ console application that automates poster overlays for Ple
 - Supports configuration via JSON file and environment variables (overlay appearance, asset paths, polling interval, etc.).
 - Outputs the full configuration at startup for verification.
 - Handles both Windows and Unix-style paths, network shares, and file operations.
+
+## Platforms
+- **Windows x64**
+- **Linux x64**
+- **macOS x64**
+- **Docker Container** (available on Docker Hub: `docker pull ${{ secrets.DOCKERHUB_USERNAME }}/yamoh:<version>`)
 
 ## Usage
 1. Configure the app using the provided JSON config file and environment variables.
@@ -104,7 +115,6 @@ services:
 | Schedule:OverlayManagerCronSchedule | SCHEDULE__OVERLAYMANAGERCRONSCHEDULE | "30 * * * *" | Cron schedule for overlay manager.|
 
 > Environment variable names use double underscores (`__`) to represent nested config keys.
-
 
 ## Contributing
 Pull requests and issues are welcome! Please see `.github/ISSUE_TEMPLATE` for bug reports.
