@@ -18,9 +18,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build src --no-restore --configuration Release
       - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        run: dotnet test src --no-build --configuration Release --verbosity normal
       - name: Install MinVer
         run: dotnet tool install --global minver-cli
       - name: Determine versions
@@ -38,7 +38,7 @@ jobs:
           # Execute MinVer
           echo "MinVerVersion=$(minver --minimum-major-minor $minMajorMinor --auto-increment $autoIncrement)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
       - name: Build Docker Image
-        run: docker build -t yamoh:${{ github.ref_name }} .
+        run: docker build -f src/Dockerfile -t yamoh:${{ github.ref_name }} .
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
