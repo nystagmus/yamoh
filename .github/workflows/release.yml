@@ -56,9 +56,9 @@ jobs:
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/yamoh:latest
       - name: Publish Standalone Releases
         run: |
-          dotnet publish -c Release -r win-x64 --self-contained true -o release/win-x64
-          dotnet publish -c Release -r linux-x64 --self-contained true -o release/linux-x64
-          dotnet publish -c Release -r osx-x64 --self-contained true -o release/osx-x64
+          dotnet publish src -c Release -r win-x64 --self-contained true -o release/win-x64
+          dotnet publish src -c Release -r linux-x64 --self-contained true -o release/linux-x64
+          dotnet publish src -c Release -r osx-x64 --self-contained true -o release/osx-x64
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
