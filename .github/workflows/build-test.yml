@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Dependencies
-        run: buildutil/install.dependencies.sh
+        run: sudo buildutil/install.dependencies.sh
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
