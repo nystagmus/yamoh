@@ -10,7 +10,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s => { s.FontSize = 20; });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
         Assert.Equal(20, geometry.ScaledFontSize);
     }
@@ -26,7 +26,7 @@ public class OverlayGeometryTests : TestsBase
         });
 
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
         var expectedX = 1000 - geometry.ScaledBackWidth - geometry.ScaledHorizontalOffset;
         Assert.Equal(expectedX, geometry.X);
@@ -43,7 +43,7 @@ public class OverlayGeometryTests : TestsBase
         });
 
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
         Assert.Equal(geometry.ScaledVerticalOffset, geometry.Y);
     }
@@ -53,7 +53,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s => { s.BackWidth = 2000; });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         Assert.Equal(1000u, geometry.ScaledBackWidth); // capped at image width
     }
 
@@ -66,7 +66,7 @@ public class OverlayGeometryTests : TestsBase
             s.Padding = 10;
         });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         Assert.True(geometry.ScaledBackWidth > 0);
     }
 
@@ -75,7 +75,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s => { s.BackHeight = 2000; });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         Assert.Equal(500u, geometry.ScaledBackHeight); // capped at image height
     }
 
@@ -88,7 +88,7 @@ public class OverlayGeometryTests : TestsBase
             s.Padding = 10;
         });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         Assert.True(geometry.ScaledBackHeight > 0);
     }
 
@@ -105,7 +105,7 @@ public class OverlayGeometryTests : TestsBase
             s.HorizontalOffset = 10;
         });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
         if (expectedLeft.HasValue)
             Assert.Equal(expectedLeft.Value, geometry.X);
@@ -129,7 +129,7 @@ public class OverlayGeometryTests : TestsBase
             s.VerticalOffset = 5;
         });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
         if (expectedTop.HasValue)
             Assert.Equal(expectedTop.Value, geometry.Y);
@@ -149,7 +149,7 @@ public class OverlayGeometryTests : TestsBase
             s.BackWidth = 100;
         });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         Assert.Equal(geometry.X + geometry.ScaledBackWidth / 2d, geometry.TextX);
     }
 
@@ -163,7 +163,7 @@ public class OverlayGeometryTests : TestsBase
             s.Padding = 10;
         });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         Assert.Equal(geometry.Y + geometry.ScaledBackHeight - geometry.ScaledPaddingY, geometry.TextY);
     }
 
@@ -172,7 +172,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s => { s.Padding = 10; });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         Assert.True(geometry.ScaledPaddingY >= geometry.ScaledPadding);
     }
 
@@ -181,7 +181,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s => { });
         var image = new MagickImage(MagickColors.White, 1000, 500);
-        var geometry = new OverlayGeometry("Test", image, "Arial.ttf", settings);
+        var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         var glyphs = geometry.GetDebugGlyphs();
         Assert.NotNull(glyphs);
     }

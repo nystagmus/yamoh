@@ -24,9 +24,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="arial.ttf">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <Content Include="Fonts/**/*.*">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
 </Project>
