@@ -13,22 +13,21 @@ public class AddOverlaySettings
     public int Padding { get; set; }
     public int BackRadius { get; init; }
     public int HorizontalOffset { get; set; }
-    public required string HorizontalAlign { get; set; }
+    public required HorizontalAlignment HorizontalAlign { get; set; }
     public int VerticalOffset { get; set; }
-    public required string VerticalAlign { get; set; }
+    public required VerticalAlignment VerticalAlign { get; set; }
     public uint BackWidth { get; set; }
     public uint BackHeight { get; set; }
     public double FontTransparency { get; init; }
     public double BackTransparency { get; init; }
 
-    public static AddOverlaySettings FromConfig(IOptions<YamohConfiguration> config)
+    public static AddOverlaySettings FromConfig(OverlayConfiguration cfg, string fontFullPath)
     {
-        var cfg = config.Value;
         var result = new AddOverlaySettings
         {
             FontColor = cfg.FontColor,
             BackColor = cfg.BackColor,
-            FontPath = cfg.FontFullPath,
+            FontPath = fontFullPath,
             FontName = cfg.FontName,
             FontSize = cfg.FontSize,
             Padding = cfg.Padding,

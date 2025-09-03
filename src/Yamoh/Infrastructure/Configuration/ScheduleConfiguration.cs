@@ -1,8 +1,10 @@
-﻿namespace Yamoh.Infrastructure.Configuration;
+﻿using Spectre.Console;
 
-public class ScheduleOptions
+namespace Yamoh.Infrastructure.Configuration;
+
+public class ScheduleConfiguration
 {
-    public const string Position = "Schedule";
+    public static string Position => "Schedule";
 
     public bool Enabled { get; init; }
     public bool RunOnStartup { get; init; }

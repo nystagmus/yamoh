@@ -1,3 +1,4 @@
+using Yamoh.Infrastructure.Configuration;
 using Yamoh.Infrastructure.ImageProcessing;
 
 namespace Yamoh.Tests;
@@ -20,8 +21,8 @@ public abstract class TestsBase
             BackColor = "#000000",
             FontPath = FontPath,
             FontName = Arial,
-            HorizontalAlign = "center",
-            VerticalAlign = "middle",
+            HorizontalAlign = HorizontalAlignment.Center,
+            VerticalAlign = VerticalAlignment.Center,
             FontSize = 20,
             Padding = 5,
             BackRadius = 10,

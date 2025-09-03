@@ -15,6 +15,7 @@ using Yamoh.Domain.State;
 using Yamoh.Features.OverlayManager;
 using Yamoh.Infrastructure;
 using Yamoh.Infrastructure.Configuration;
+using Yamoh.Infrastructure.Configuration.Validation;
 using Yamoh.Infrastructure.EnvironmentUtility;
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.External;
@@ -44,9 +45,12 @@ initializer.Initialize();
 
 if (!initializer.CheckPermissions())
 {
-    Log.Information("Access not permitted to configuration directory {AppEnvironmentConfigFolder}. Check your configuration", AppEnvironment.ConfigFolder);
+    Log.Information(
+        "Access not permitted to configuration directory {AppEnvironmentConfigFolder}. Check your configuration",
+        AppEnvironment.ConfigFolder);
     Environment.Exit(1);
 }
+
 initializer.CopyDefaultsIfMissing();
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -61,8 +65,21 @@ builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: 
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger);
 
-builder.Services.Configure<YamohConfiguration>(builder.Configuration.GetSection(YamohConfiguration.Position));
-builder.Services.Configure<ScheduleOptions>(builder.Configuration.GetSection(ScheduleOptions.Position));
+builder.Services.AddOptions<YamohConfiguration>().Bind(builder.Configuration.GetSection(YamohConfiguration.Position))
+    .ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<YamohConfiguration>, YamohConfigurationValidation>();
+
+builder.Services.AddOptions<OverlayConfiguration>()
+    .Bind(builder.Configuration.GetSection(OverlayConfiguration.Position)).ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<OverlayConfiguration>, OverlayConfigurationValidation>();
+
+builder.Services.AddOptions<OverlayBehaviorConfiguration>()
+    .Bind(builder.Configuration.GetSection(OverlayBehaviorConfiguration.Position)).ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<ScheduleConfiguration>()
+    .Bind(builder.Configuration.GetSection(ScheduleConfiguration.Position)).ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<ScheduleConfiguration>, ScheduleConfigurationValidation>();
 
 // Services
 builder.Services.AddHttpClient();
@@ -88,11 +105,11 @@ builder.Services.AddTransient<PlexAPI>(provider =>
 });
 
 // Scheduler
-var schedulerEnabled = builder.Configuration.GetSection(ScheduleOptions.Position).GetValue<bool>("Enabled");
+var schedulerEnabled = builder.Configuration.GetSection(ScheduleConfiguration.Position).GetValue<bool>("Enabled");
 
 if (schedulerEnabled)
 {
-    var overlayManagerCronSchedule = builder.Configuration.GetSection(ScheduleOptions.Position)
+    var overlayManagerCronSchedule = builder.Configuration.GetSection(ScheduleConfiguration.Position)
         .GetValue<string>("OverlayManagerCronSchedule");
 
     if (overlayManagerCronSchedule != null)
@@ -102,27 +119,38 @@ if (schedulerEnabled)
 
 builder.Services.AddHostedService<CronScheduler>();
 
-Log.Information("Looking good, starting up!");
+Log.Information("Starting up!");
 var host = builder.Build();
 
 ServiceLocator.SetServiceProvider(host.Services);
 
-// Validate and print configuration
+// Print configuration
 SpectreConsoleHelper.PrintSplashScreen();
-
-var config = host.Services.GetRequiredService<IOptions<YamohConfiguration>>().Value;
 
 try
 {
-    if (!config.AssertIsValid())
+    var configs = new List<object>
     {
-        Environment.Exit(1);
+        host.Services.GetRequiredService<IOptions<YamohConfiguration>>().Value,
+        host.Services.GetRequiredService<IOptions<OverlayConfiguration>>().Value,
+        host.Services.GetRequiredService<IOptions<OverlayBehaviorConfiguration>>().Value,
+        host.Services.GetRequiredService<IOptions<ScheduleConfiguration>>().Value
+    };
+
+    var configurationPanel = configs.PrintObjectPropertyValues();
+    AnsiConsole.Write(configurationPanel);
+}
+catch (OptionsValidationException ex)
+{
+    foreach (var validationFailure in ex.Failures)
+    {
+        Log.Logger.Error(ex, "Configuration validation error: {ValidationFailure}", validationFailure);
+        return 0;
     }
-    config.PrintConfigTable();
 }
 catch (Exception ex)
 {
-    AnsiConsole.MarkupLine($"[red]Configuration error: {ex.Message}[/]");
+    Log.Logger.Error(ex, "Unhandled exception when reading from configuration");
     return 0;
 }
 
@@ -138,7 +166,7 @@ foreach (var command in cliBuilder.GenerateCommandTree())
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     using var scope = host.Services.CreateScope();
-    var scheduleOptions = scope.ServiceProvider.GetRequiredService<IOptions<ScheduleOptions>>().Value;
+    var scheduleOptions = scope.ServiceProvider.GetRequiredService<IOptions<ScheduleConfiguration>>().Value;
 
     if (scheduleOptions.Enabled)
     {
@@ -189,7 +217,7 @@ return await parseResult.InvokeAsync();
 
 public partial class Program
 {
-    public static AppEnvironment AppEnvironment {get;} = new();
+    public static AppEnvironment AppEnvironment { get; } = new();
 }
 
 public static class ServiceLocator

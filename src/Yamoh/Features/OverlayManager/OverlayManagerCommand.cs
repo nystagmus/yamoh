@@ -17,14 +17,21 @@ namespace Yamoh.Features.OverlayManager;
 
 public class OverlayManagerCommand(
     ILogger<OverlayManagerCommand> logger,
-    IOptions<YamohConfiguration> options,
+    IOptions<YamohConfiguration> yamohConfigurationOptions,
+    IOptions<OverlayConfiguration> overlayConfigurationOptions,
+    IOptions<OverlayBehaviorConfiguration> overlayBehaviorConfigurationOptions,
     MaintainerrClient maintainerrClient,
     PlexClient plexClient,
     PlexAPI plexApi,
     OverlayHelper overlayHelper,
     OverlayStateManager overlayStateManager) : IYamohCommand
 {
+    private readonly YamohConfiguration _yamohConfiguration = yamohConfigurationOptions.Value;
+    private readonly OverlayConfiguration _overlayConfiguration = overlayConfigurationOptions.Value;
+    private readonly OverlayBehaviorConfiguration _overlayBehaviorConfiguration = overlayBehaviorConfigurationOptions.Value;
+
     private GetAllLibrariesResponse? _allLibraries;
+
 
     public string CommandName => "update-maintainerr-overlays";
 
@@ -36,7 +43,7 @@ public class OverlayManagerCommand(
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        var assetBasePath = options.Value.AssetBaseFullPath;
+        var assetBasePath = _yamohConfiguration.AssetBaseFullPath;
 
         if (!new DirectoryInfo(assetBasePath).HasWritePermissions())
         {
@@ -44,14 +51,14 @@ public class OverlayManagerCommand(
             return;
         }
 
-        var backupAssetBasePath = options.Value.BackupImageFullPath;
+        var backupAssetBasePath = _yamohConfiguration.BackupImageFullPath;
 
         if (!new DirectoryInfo(backupAssetBasePath).HasWritePermissions())
         {
             logger.LogError("Backup Image Path doesn't exist or is not writeable. Path: {Path}", backupAssetBasePath);
         }
 
-        if (options.Value.RestoreOnly)
+        if (_overlayBehaviorConfiguration.RestoreOnly)
         {
             logger.LogWarning(
                 "[yellow bold]Restore Only[/] was set in configuration. Will restore all posters back to original");
@@ -87,7 +94,7 @@ public class OverlayManagerCommand(
         var appliedOverlays = 0;
         var skippedOverlays = 0;
         var skippedBecauseOfError = 0;
-        var overlaySettings = AddOverlaySettings.FromConfig(options);
+        var overlaySettings = AddOverlaySettings.FromConfig(_overlayConfiguration, _yamohConfiguration.FontFullPath);
 
         // For each collection, process overlays and update state
         foreach (var collection in collections.Where(collection => collection.IsActive))
@@ -109,7 +116,7 @@ public class OverlayManagerCommand(
 
                 var shouldReapply = state.LastKnownExpirationDate.Date != item.ExpirationDate.Date;
 
-                if (options.Value.ReapplyOverlays || shouldReapply || state is not { OverlayApplied: true })
+                if (_overlayBehaviorConfiguration.ReapplyOverlays || shouldReapply || state is not { OverlayApplied: true })
                 {
                     state.MaintainerrCollectionId = collection.Id;
                     state.LastChecked = DateTimeOffset.UtcNow;
@@ -298,11 +305,11 @@ public class OverlayManagerCommand(
 
     private string GetOverlayText(OverlayManagerItem item)
     {
-        var culture = new CultureInfo(options.Value.Language);
-        var formattedDate = item.ExpirationDate.ToString(options.Value.DateFormat, culture);
-        var overlayText = $"{options.Value.OverlayText} {formattedDate}";
-        if (options.Value.EnableDaySuffix) overlayText += item.ExpirationDate.GetDaySuffix();
-        if (options.Value.EnableUppercase) overlayText = overlayText.ToUpper();
+        var culture = new CultureInfo(_overlayConfiguration.Language);
+        var formattedDate = item.ExpirationDate.ToString(_overlayConfiguration.DateFormat, culture);
+        var overlayText = $"{_overlayConfiguration.OverlayText} {formattedDate}";
+        if (_overlayConfiguration.EnableDaySuffix) overlayText += item.ExpirationDate.GetDaySuffix();
+        if (_overlayConfiguration.EnableUppercase) overlayText = overlayText.ToUpper();
         return overlayText;
     }
 
@@ -471,7 +478,7 @@ public class OverlayManagerCommand(
                     MediaFileName = "poster",
                 });
 
-                if (!options.Value.OverlaySeasonEpisodes)
+                if (!_overlayBehaviorConfiguration.OverlaySeasonEpisodes)
                 {
                     return items;
                 }
@@ -577,7 +584,7 @@ public class OverlayManagerCommand(
 
                 items.Add(item);
 
-                if (!options.Value.OverlaySeasonEpisodes)
+                if (!_overlayBehaviorConfiguration.OverlaySeasonEpisodes)
                 {
                     return items;
                 }
