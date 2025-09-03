@@ -110,6 +110,7 @@ services:
 | OverlayBehavior:OverlayShowSeasons  | OVERLAYBEHAVIOR__OVERLAYSHOWSEASONS    | true                  | Apply overlay to a Show's seasons (if Maintainerr collection is Show type) |
 | OverlayBehavior:OverlaySeasonEpisodes| OVERLAYBEHAVIOR__OVERLAYSEASONEPISODES | true                  | Apply overlay to a Season's episodes (if Maintainerr collection is Season type, or OverlayShowSeasons == true ) |
 | OverlayBehavior:RestoreOnly         | OVERLAYBEHAVIOR__RESTOREONLY           | false                 | Only restore original posters, do not apply overlays. Helpful to roll back changes made by this application |
+| OverlayBehavior:ManageKometaOverlayLabel | OVERLAYBEHAVIOR__MANAGEKOMETAOVERLAYLABEL  | false        | Remove the Kometa-specific label `Overlay` from Plex items when making changes. This informs Kometa to re-apply its own overlays and update the poster from assets. |
 | Schedule:Enabled          | SCHEDULE__ENABLED            | true                  | Enable scheduled overlay runs based on cron schedule. Otherwise Yamoh only works with cli arguments. |
 | Schedule:RunOnStart       | SCHEDULE__RUNONSTART         | false                 | FUTURE: Run overlay manager on app start. Run on app start, and on cron schedule afterwards |
 | Schedule:OverlayManagerCronSchedule | SCHEDULE__OVERLAYMANAGERCRONSCHEDULE | "30 * * * *" | Cron schedule for overlay manager.|

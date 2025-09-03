@@ -11,6 +11,7 @@ using Yamoh.Infrastructure;
 using Yamoh.Infrastructure.Configuration;
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.External;
+using Yamoh.Infrastructure.FileProcessing;
 using Yamoh.Infrastructure.ImageProcessing;
 
 namespace Yamoh.Features.OverlayManager;
@@ -24,6 +25,7 @@ public class OverlayManagerCommand(
     PlexClient plexClient,
     PlexAPI plexApi,
     OverlayHelper overlayHelper,
+    AssetManager assetManager,
     OverlayStateManager overlayStateManager) : IYamohCommand
 {
     private readonly YamohConfiguration _yamohConfiguration = yamohConfigurationOptions.Value;
@@ -39,25 +41,14 @@ public class OverlayManagerCommand(
         "Main function of the application. Manage overlays based on Maintainerr status.";
 
     private const string BackupFileNameSuffix = ".original";
-    private const string KometaOverlayLabel = "Overlay";
+
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         var assetBasePath = _yamohConfiguration.AssetBaseFullPath;
-
-        if (!new DirectoryInfo(assetBasePath).HasWritePermissions())
-        {
-            logger.LogError("Asset Base path doesn't exist or is not writeable. Path: {Path}", assetBasePath);
-            return;
-        }
-
         var backupAssetBasePath = _yamohConfiguration.BackupImageFullPath;
 
-        if (!new DirectoryInfo(backupAssetBasePath).HasWritePermissions())
-        {
-            logger.LogError("Backup Image Path doesn't exist or is not writeable. Path: {Path}", backupAssetBasePath);
-        }
-
+        // Restore only
         if (_overlayBehaviorConfiguration.RestoreOnly)
         {
             logger.LogWarning(
@@ -68,19 +59,17 @@ public class OverlayManagerCommand(
 
             foreach (var item in restoreItems)
             {
-                count += await RestoreOriginalPoster(item);
-            }
-
-            foreach (var overlayStateItem in restoreItems)
-            {
-                overlayStateItem.OverlayApplied = false;
-                overlayStateManager.Upsert(overlayStateItem);
+                if (await RestoreOriginalPoster(item, false))
+                {
+                    count++;
+                }
             }
 
             logger.LogInformation("Restored {Count} images back to their originals", count);
             return;
         }
 
+        // Get collections from Maintainerr
         var collections = (await maintainerrClient.GetCollections())
             .Where(x => x is { IsActive: true, DeleteAfterDays: > 0 }).ToList();
 
@@ -90,7 +79,7 @@ public class OverlayManagerCommand(
             return;
         }
 
-        var removedOverlays = await RestoreOriginalPosters(collections);
+        var removedOverlays = await RestoreOriginalPostersMissingFromMaintainerr(collections);
         var appliedOverlays = 0;
         var skippedOverlays = 0;
         var skippedBecauseOfError = 0;
@@ -107,12 +96,14 @@ public class OverlayManagerCommand(
 
                 state ??= new OverlayStateItem
                 {
-                    PlexId = item.PlexId,
-                    LibrarySectionId = item.LibraryId,
-                    MaintainerrPlexType = item.MaintainerrPlexType,
-                    IsChild = item.IsChild,
-                    ParentPlexId = item.ParentPlexId,
+                    PlexId = item.PlexId
                 };
+
+                state.FriendlyTitle = item.FriendlyTitle;
+                state.LibrarySectionId = item.LibraryId;
+                state.MaintainerrPlexType = item.MaintainerrPlexType;
+                state.IsChild = item.IsChild;
+                state.ParentPlexId = item.ParentPlexId;
 
                 var shouldReapply = state.LastKnownExpirationDate.Date != item.ExpirationDate.Date;
 
@@ -175,14 +166,14 @@ public class OverlayManagerCommand(
                         else
                         {
                             skippedBecauseOfError++;
-                            logger.LogInformation("Could not find or fetch original poster for {PlexId}", item.PlexId);
+                            logger.LogInformation("Could not find or fetch original poster for {PlexId} - {FriendlyTitle}", item.PlexId, item.FriendlyTitle);
                             continue;
                         }
                     }
 
                     state.PosterPath = mediaFileFullName;
                     state.OriginalPosterPath = originalPosterBackupFullName;
-                    state.KometaLabelExists = item.KometaOverlayApplied;
+                    state.KometaLabelExists = item.KometaLabelExists;
 
                     // Apply overlay
                     var overlayText = GetOverlayText(item);
@@ -197,14 +188,14 @@ public class OverlayManagerCommand(
                             state.OverlayApplied = true;
                             state.PosterHash = null;
 
-                            if (item.KometaOverlayApplied)
+                            if (item.KometaLabelExists)
                             {
-                                if (!await plexClient.RemoveLabelKeyFromItem(item.LibraryId, item.PlexId, item.DataType,
-                                        KometaOverlayLabel))
+                                if (!await plexClient.RemoveKometaLabelFromItem(item.LibraryId, item.PlexId, item.DataType))
                                 {
                                     logger.LogInformation(
-                                        "Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",
-                                        KometaOverlayLabel, item.PlexId);
+                                        "Failed to remove Kometa Overlay label from PlexId: {PlexId} - {FriendlyTitle}",
+                                        item.PlexId,
+                                        item.FriendlyTitle);
                                 }
 
                                 state.KometaLabelExists = false;
@@ -212,8 +203,9 @@ public class OverlayManagerCommand(
 
                             appliedOverlays++;
 
-                            logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId}",
-                                item.PlexId);
+                            logger.LogInformation("Applied overlay and tracked state for PlexId {ItemPlexId} - {FriendlyTitle}",
+                                item.PlexId,
+                                item.FriendlyTitle);
                         }
                         catch (Exception ex)
                         {
@@ -226,7 +218,7 @@ public class OverlayManagerCommand(
                     }
                     else
                     {
-                        logger.LogInformation("Could not apply overlay for {ItemPlexId}", item.PlexId);
+                        logger.LogInformation("Could not apply overlay for {ItemPlexId} - {FriendlyTitle}", item.PlexId, item.FriendlyTitle);
                         skippedBecauseOfError++;
                         state.OverlayApplied = false;
                     }
@@ -261,46 +253,50 @@ public class OverlayManagerCommand(
         throw new InvalidOperationException("Plex Library metadata could not be retrieved");
     }
 
-    private async Task<int> RestoreOriginalPosters(List<MaintainerrCollection> collections)
+    private async Task<int> RestoreOriginalPostersMissingFromMaintainerr(List<MaintainerrCollection> collections)
     {
         // Get all PlexIds currently in Maintainerr
         var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId).ToHashSet();
 
         // Restore overlays for items no longer in Maintainerr but still in Plex
-        var pendingRestores = overlayStateManager.GetPendingRestores(currentPlexIds);
+        var pendingRestores = overlayStateManager.GetNeedsRestoresMissingFromList(currentPlexIds);
         var count = 0;
 
         foreach (var pendingRestore in pendingRestores)
         {
-            count += await RestoreOriginalPoster(pendingRestore);
+            if (await RestoreOriginalPoster(pendingRestore, true)) count++;
         }
 
         return count;
     }
 
-    private async Task<int> RestoreOriginalPoster(OverlayStateItem stateItem)
+    private async Task<bool> RestoreOriginalPoster(OverlayStateItem item, bool deleteFromState)
     {
-        // Restore original poster
-        if (File.Exists(stateItem.OriginalPosterPath))
+        // Restore poster
+        if (assetManager.TryRestorePoster(item.OriginalPosterPath, item.PosterPath))
         {
-            File.Copy(stateItem.OriginalPosterPath, stateItem.PosterPath, overwrite: true);
-            File.Delete(stateItem.OriginalPosterPath);
+            // Remove label
+            await plexClient.RemoveKometaLabelFromItem(item.LibrarySectionId, item.PlexId, item.MaintainerrPlexType);
 
-            if (!await plexClient.RemoveLabelKeyFromItem(stateItem.LibrarySectionId, stateItem.PlexId,
-                    stateItem.MaintainerrPlexType,
-                    KometaOverlayLabel))
+            // Delete if necessary
+            if (deleteFromState)
             {
-                logger.LogInformation("Failed to remove label {KometaOverlayLabel} from PlexId: {PlexId}",
-                    KometaOverlayLabel, stateItem.PlexId);
+                overlayStateManager.Remove(item.PlexId);
+            }
+            else
+            {
+                // Update state
+                item.OverlayApplied = false;
+                overlayStateManager.Upsert(item);
             }
 
-            overlayStateManager.Remove(stateItem.PlexId);
-            logger.LogInformation("Restored original poster for PlexId {StateItemPlexId}", stateItem.PlexId);
-            return 1;
+            logger.LogInformation("Restored original poster for PlexId {StateItemPlexId} '{StateItemFriendlyName}'", item.PlexId, item.FriendlyTitle);
+            return true;
         }
 
-        logger.LogWarning("Original poster backup missing for PlexId {StateItemPlexId}", stateItem.PlexId);
-        return 0;
+        logger.LogInformation("Could not restore original poster for PlexId {StateItemPlexId} '{StateItemFriendlyTitle}' - missing?", item.PlexId, item.FriendlyTitle);
+
+        return false;
     }
 
     private string GetOverlayText(OverlayManagerItem item)
@@ -375,6 +371,8 @@ public class OverlayManagerCommand(
                 var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
 
+                var friendlyName = Guard.Against.Null(plexMeta.Metadata[0].Title);
+
                 var mediaFilePath = Guard.Against.Null(plexMeta.Metadata[0].Media?[0].Part?[0].File,
                     nameof(GetMediaMetaDataPart.File));
 
@@ -412,9 +410,10 @@ public class OverlayManagerCommand(
                 items.Add(new OverlayManagerItem()
                 {
                     PlexId = plexId,
+                    FriendlyTitle = friendlyName,
                     DataType = MaintainerrPlexDataType.Movies,
                     LibraryName = libraryName,
-                    LibraryId = librarySectionId,
+                    LibraryId = (int)librarySectionId,
                     MaintainerrPlexType = MaintainerrPlexDataType.Movies,
                     MediaFileRelativePath = mediaFilePath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
@@ -440,6 +439,9 @@ public class OverlayManagerCommand(
 
                 var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
+
+                var friendlyTitle = Guard.Against.Null(plexMeta.Metadata[0].Title);
+
                 var showPath = Guard.Against.Null(metadataResponse.Object.MediaContainer.Metadata[0].Location?[0].Path);
 
                 var librarySectionId = Guard.Against.Null(plexMeta.Metadata[0].LibrarySectionID,
@@ -469,9 +471,10 @@ public class OverlayManagerCommand(
                 items.Add(new OverlayManagerItem()
                 {
                     PlexId = plexId,
+                    FriendlyTitle = friendlyTitle,
                     DataType = MaintainerrPlexDataType.Shows,
                     LibraryName = libraryName,
-                    LibraryId = librarySectionId,
+                    LibraryId = (int)librarySectionId,
                     MaintainerrPlexType = MaintainerrPlexDataType.Shows,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
@@ -483,7 +486,7 @@ public class OverlayManagerCommand(
                     return items;
                 }
 
-                logger.LogInformation("Adding Seasons for {PlexId}", plexId);
+                logger.LogInformation("Including Metadata for Seasons for {PlexId} - {FriendlyTitle}", plexId, friendlyTitle);
                 var episodeInfos = await plexClient.GetMetadataChildrenAsync(plexId);
 
                 var episodeIds = episodeInfos?.MediaContainer?.Metadata?.Where(x => x.RatingKey != null)
@@ -525,6 +528,9 @@ public class OverlayManagerCommand(
 
                 var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
+
+                var friendlyTitle = Guard.Against.Null(plexMeta.Metadata[0].Title);
+
                 var parentPlexId = Guard.Against.Null(plexMeta.Metadata[0].ParentRatingKey);
 
                 var parentRequest = new GetMediaMetaDataRequest()
@@ -535,7 +541,11 @@ public class OverlayManagerCommand(
 
                 if (parentMetadataResponse.StatusCode != (int)HttpStatusCode.OK)
                     return items;
+
                 var parentMetadata = Guard.Against.Null(parentMetadataResponse.Object?.MediaContainer);
+
+                var parentFriendlyTitle = Guard.Against.Null(parentMetadata.Metadata[0].Title);
+
                 var showPath = Guard.Against.Null(parentMetadata.Metadata[0].Location?[0].Path);
 
                 var librarySectionId = Guard.Against.Null(plexMeta.Metadata[0].LibrarySectionID,
@@ -567,9 +577,10 @@ public class OverlayManagerCommand(
                 var item = new OverlayManagerItem()
                 {
                     PlexId = plexId,
+                    FriendlyTitle = $"{parentFriendlyTitle} - {friendlyTitle}",
                     DataType = MaintainerrPlexDataType.Seasons,
                     LibraryName = libraryName,
-                    LibraryId = librarySectionId,
+                    LibraryId = (int)librarySectionId,
                     MaintainerrPlexType = MaintainerrPlexDataType.Seasons,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
@@ -589,7 +600,7 @@ public class OverlayManagerCommand(
                     return items;
                 }
 
-                logger.LogInformation("Adding Episodes for {PlexId}", plexId);
+                logger.LogInformation("Including Metadata for Episodes for {PlexId} - {FriendlyTitle}", plexId, friendlyTitle);
                 var episodeInfos = await plexClient.GetMetadataChildrenAsync(plexId);
 
                 var episodeIds = episodeInfos?.MediaContainer?.Metadata?.Where(x => x.RatingKey != null)
@@ -631,6 +642,9 @@ public class OverlayManagerCommand(
 
                 var plexMeta = Guard.Against.Null(metadataResponse.Object?.MediaContainer,
                     nameof(GetMediaMetaDataResponse.Object));
+
+                var friendlyTitle = Guard.Against.Null(plexMeta.Metadata[0].Title);
+
                 var grandParentPlexId = Guard.Against.Null(plexMeta.Metadata[0].GrandparentRatingKey);
 
                 var grandparentRequest = new GetMediaMetaDataRequest()
@@ -643,6 +657,9 @@ public class OverlayManagerCommand(
                     return items;
 
                 var grandparentMetadata = Guard.Against.Null(grandparentMetadataResponse.Object?.MediaContainer);
+
+                var grandparentFriendlyTitle = Guard.Against.Null(grandparentMetadata.Metadata[0].Title);
+
                 var showPath = Guard.Against.Null(grandparentMetadata.Metadata[0].Location?[0].Path);
 
                 var librarySectionId = Guard.Against.Null(plexMeta.Metadata[0].LibrarySectionID,
@@ -671,17 +688,21 @@ public class OverlayManagerCommand(
 
                 var seasonIndex = plexMeta.Metadata[0].ParentIndex.ToString()?.PadLeft(2, '0');
                 var episodeIndex = plexMeta.Metadata[0].Index.ToString().PadLeft(2, '0');
+                var episodeFileNameFormat = $"S{seasonIndex}E{episodeIndex}";
+
+                var fullFriendlyTitle = $"{grandparentFriendlyTitle} - {episodeFileNameFormat} - {friendlyTitle}";
 
                 var item = new OverlayManagerItem()
                 {
                     PlexId = plexId,
+                    FriendlyTitle = fullFriendlyTitle,
                     DataType = MaintainerrPlexDataType.Episodes,
                     LibraryName = libraryName,
-                    LibraryId = librarySectionId,
+                    LibraryId = (int)librarySectionId,
                     MaintainerrPlexType = MaintainerrPlexDataType.Episodes,
                     MediaFileRelativePath = showPath,
                     OriginalPlexPosterUrl = plexMeta.Metadata[0].Thumb,
-                    MediaFileName = $"S{seasonIndex}E{episodeIndex}"
+                    MediaFileName = episodeFileNameFormat,
                 };
 
                 if (asChild)
@@ -708,7 +729,7 @@ public class OverlayManagerCommand(
 
         if (maintainerrMedia.Count == 0)
         {
-            logger.LogInformation("No media found for collection: {Collection}", collectionTitle);
+            logger.LogInformation("No items found for collection: {Collection}", collectionTitle);
             return items;
         }
 
@@ -744,21 +765,14 @@ public class OverlayManagerCommand(
                         builtItem.ExpirationDate = addDate.AddDays(deleteAfterDays);
                     }
 
-                    // Get labels
-                    var labels = await plexClient.GetLabelsForPlexIdAsync(plexId);
-
-                    if (labels != null)
-                    {
-                        builtItem.KometaOverlayApplied = labels.Any(x =>
-                            x.Tag != null && x.Tag.Equals(KometaOverlayLabel, StringComparison.OrdinalIgnoreCase));
-                    }
+                    builtItem.KometaLabelExists = await plexClient.HasKometaOverlay(plexId);
 
                     items.Add(builtItem);
 
                     if (!asChild)
                         logger.LogInformation(
-                            "Added {ItemType} item with PlexId: {PlexId}, LibraryName: {LibraryName}, ItemRelativePath: {ItemRelativePath}, Exp Date: {ExpirationDate}",
-                            builtItem.DataType, builtItem.PlexId, builtItem.LibraryName,
+                            "Grabbed Metadata for {ItemType} item with PlexId: {PlexId}, FriendlyTitle: {FriendlyTitle}, LibraryName: {LibraryName}, ItemRelativePath: {ItemRelativePath}, Exp Date: {ExpirationDate}",
+                            builtItem.DataType, builtItem.PlexId, builtItem.FriendlyTitle, builtItem.LibraryName,
                             builtItem.MediaFileRelativePath,
                             builtItem.ExpirationDate);
                 }

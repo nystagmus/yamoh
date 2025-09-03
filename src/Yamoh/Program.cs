@@ -19,6 +19,7 @@ using Yamoh.Infrastructure.Configuration.Validation;
 using Yamoh.Infrastructure.EnvironmentUtility;
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.External;
+using Yamoh.Infrastructure.FileProcessing;
 using Yamoh.Infrastructure.ImageProcessing;
 using Yamoh.Infrastructure.Scheduling;
 using Yamoh.Ui;
@@ -87,6 +88,7 @@ builder.Services.AddTransient<CommandFactory>();
 builder.Services.AddTransient<MaintainerrClient>();
 builder.Services.AddTransient<PlexClient>();
 builder.Services.AddTransient<OverlayHelper>();
+builder.Services.AddTransient<AssetManager>();
 builder.Services.AddSingleton<OverlayStateManager>();
 builder.Services.AddAllTypesOf<IYamohCommand>(Assembly.GetExecutingAssembly());
 

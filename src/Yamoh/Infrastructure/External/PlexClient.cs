@@ -16,15 +16,20 @@ public class PlexClient
 {
     private readonly ILogger<PlexClient> _logger;
     private readonly YamohConfiguration _config;
+    private readonly OverlayBehaviorConfiguration _overlayBehaviorConfiguration;
     private readonly HttpClient _httpClient;
+
+    private const string KometaOverlayLabel = "Overlay";
 
     public PlexClient(
         IOptions<YamohConfiguration> config,
+        IOptions<OverlayBehaviorConfiguration> overlayBehaviorConfiguration,
         IHttpClientFactory clientFactory,
         ILogger<PlexClient> logger)
     {
         this._logger = logger;
         this._config = config.Value;
+        this._overlayBehaviorConfiguration = overlayBehaviorConfiguration.Value;
         this._httpClient = clientFactory.CreateClient("YAMOH");
         this._httpClient.DefaultRequestHeaders.Accept.Clear();
         this._httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -172,5 +177,20 @@ public class PlexClient
             this._logger.LogError(ex, "Failed to fetch labels for PlexId: {FullUrl}", RemovePlexAuthToken(fullUrl));
             return false;
         }
+    }
+
+    public async Task<bool> RemoveKometaLabelFromItem(long librarySectionId, int plexId, MaintainerrPlexDataType type)
+    {
+        if(_overlayBehaviorConfiguration.ManageKometaOverlayLabel)
+            return await RemoveLabelKeyFromItem(librarySectionId, plexId, type, KometaOverlayLabel);
+        return true;
+    }
+
+    public async Task<bool> HasKometaOverlay(int plexId)
+    {
+        var labels = await GetLabelsForPlexIdAsync(plexId);
+
+        return labels != null && labels.Any(x =>
+            x.Tag != null && x.Tag.Equals(KometaOverlayLabel, StringComparison.OrdinalIgnoreCase));
     }
 }

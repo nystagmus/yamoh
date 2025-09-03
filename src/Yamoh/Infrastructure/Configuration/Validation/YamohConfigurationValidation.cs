@@ -25,11 +25,11 @@ public class YamohConfigurationValidation(IConfiguration config) : IValidateOpti
             ValidateUrl(this._config.MaintainerrUrl, nameof(this._config.MaintainerrUrl), errors);
 
             ValidatePathFormat(this._config.AssetBasePath, nameof(this._config.AssetBasePath), errors);
-            ValidatePathExists(this._config.AssetBaseFullPath, nameof(this._config.AssetBasePath), errors);
+            ValidateOrCreatePathExists(this._config.AssetBaseFullPath, nameof(this._config.AssetBasePath), errors);
             ValidatePathIsWriteable(this._config.AssetBaseFullPath, nameof(this._config.AssetBasePath), errors);
 
             ValidatePathFormat(this._config.BackupImagePath, nameof(this._config.BackupImagePath), errors);
-            ValidatePathExists(this._config.BackupImageFullPath, nameof(this._config.BackupImagePath), errors);
+            ValidateOrCreatePathExists(this._config.BackupImageFullPath, nameof(this._config.BackupImagePath), errors);
             ValidatePathIsWriteable(this._config.BackupImageFullPath, nameof(this._config.BackupImagePath), errors);
 
             ValidatePathFormat(this._config.TempImagePath, nameof(this._config.TempImagePath), errors);

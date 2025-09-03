@@ -5,6 +5,7 @@ namespace Yamoh.Features.OverlayManager;
 public class OverlayManagerItem
 {
     public required int PlexId { get; init; }
+    public required string FriendlyTitle { get; set; }
     public required MaintainerrPlexDataType DataType { get; init; }
     public required string LibraryName { get; init; }
     public required string MediaFileRelativePath { get; init; }
@@ -14,7 +15,7 @@ public class OverlayManagerItem
     public DateTimeOffset ExpirationDate { get; set; }
     public bool IsChild { get; set; }
     public int? ParentPlexId { get; set; }
-    public bool KometaOverlayApplied { get; set; }
-    public required long LibraryId { get; set; }
+    public bool KometaLabelExists { get; set; }
+    public required int LibraryId { get; set; }
     public required MaintainerrPlexDataType MaintainerrPlexType { get; set; }
 }

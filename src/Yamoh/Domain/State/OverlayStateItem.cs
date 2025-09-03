@@ -8,6 +8,7 @@ namespace Yamoh.Domain.State
         [BsonId]
         public int PlexId { get; set; }
         public int MaintainerrCollectionId { get; set; }
+        public string? FriendlyTitle { get; set; }
         public string PosterPath { get; set; } = string.Empty;
         public string OriginalPosterPath { get; set; } = string.Empty;
         public bool OverlayApplied { get; set; }
@@ -17,7 +18,7 @@ namespace Yamoh.Domain.State
         public DateTimeOffset LastKnownExpirationDate { get; set; } = DateTimeOffset.Now;
         public string? PosterHash { get; set; }
         public bool KometaLabelExists { get; set; }
-        public long LibrarySectionId { get; set; }
+        public int LibrarySectionId { get; set; }
         public MaintainerrPlexDataType MaintainerrPlexType { get; set; }
     }
 }

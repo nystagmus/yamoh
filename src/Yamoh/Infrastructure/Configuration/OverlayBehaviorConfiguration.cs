@@ -8,5 +8,6 @@ public class OverlayBehaviorConfiguration
     public bool ReapplyOverlays { get; init; }
     public bool OverlayShowSeasons { get; init; }
     public bool OverlaySeasonEpisodes { get; init; }
+    public bool ManageKometaOverlayLabel { get; init; }
     public bool RestoreOnly { get; init; }
 }
