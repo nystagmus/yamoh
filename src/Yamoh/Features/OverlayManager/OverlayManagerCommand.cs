@@ -1,4 +1,5 @@
 using System.Globalization;
+using Ardalis.GuardClauses;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Yamoh.Domain.Maintainerr;
@@ -20,6 +21,7 @@ public class OverlayManagerCommand(
     MaintainerrClient maintainerrClient,
     PlexClient plexClient,
     PlexMetadataBuilder plexMetadataBuilder,
+    AssetManager assetManager,
     OverlayHelper overlayHelper,
     OverlayStateManager overlayStateManager) : IYamohCommand
 {
@@ -39,36 +41,14 @@ public class OverlayManagerCommand(
         var assetBasePath = _yamohConfiguration.AssetBaseFullPath;
         var backupAssetBasePath = _yamohConfiguration.BackupImageFullPath;
 
-        // Restore only
-        if (_overlayBehaviorConfiguration.RestoreOnly)
-        {
-            logger.LogWarning(
-                "[yellow bold]Restore Only[/] was set in configuration. Will restore all posters back to original");
-            var restoreItems = overlayStateManager.GetAppliedOverlays().ToList();
-
-            var count = 0;
-
-            foreach (var item in restoreItems)
-            {
-                if (await RestoreOriginalPoster(item, false))
-                {
-                    count++;
-                }
-            }
-
-            logger.LogInformation("Restored {Count} images back to their originals", count);
-            return;
-        }
+        // Restore only option
+        if (await RestoreOnly()) return;
 
         // Get collections from Maintainerr
-        var collections = (await maintainerrClient.GetCollections())
-            .Where(x => x is { IsActive: true, DeleteAfterDays: > 0 }).ToList();
-
-        if (collections.Count == 0)
-        {
-            logger.LogInformation("Maintainerr returned zero active collections. Check configuration");
-            return;
-        }
+        var collections = Guard.Against.NullOrEmpty((await maintainerrClient.GetCollections())
+                .Where(x => x is { IsActive: true, DeleteAfterDays: > 0 }),
+                message: "Maintainerr returned zero active collections. Check configuration.")
+            .ToList();
 
         var removedOverlays = await RestoreOriginalPostersMissingFromMaintainerr(collections);
         var appliedOverlays = 0;
@@ -77,7 +57,7 @@ public class OverlayManagerCommand(
         var overlaySettings = AddOverlaySettings.FromConfig(_overlayConfiguration, _yamohConfiguration.FontFullPath);
 
         // For each collection, process overlays and update state
-        foreach (var collection in collections.Where(collection => collection.IsActive))
+        foreach (var collection in collections)
         {
             var items = await plexMetadataBuilder.BuildFromMaintainerrCollection(collection);
 
@@ -96,146 +76,127 @@ public class OverlayManagerCommand(
                 state.IsChild = item.IsChild;
                 state.ParentPlexId = item.ParentPlexId;
 
-                var shouldReapply = state.LastKnownExpirationDate.Date != item.ExpirationDate.Date;
+                var expirationDateChanged = state.LastKnownExpirationDate.Date != item.ExpirationDate.Date;
 
-                if (_overlayBehaviorConfiguration.ReapplyOverlays || shouldReapply
-                                                                  || state is not { OverlayApplied: true })
+                try
                 {
-                    state.MaintainerrCollectionId = collection.Id;
-                    state.LastChecked = DateTimeOffset.UtcNow;
-                    state.LastKnownExpirationDate = item.ExpirationDate;
-
-                    // Save original poster (Asset Mode)
-                    var mediaFileFullPath = Path.GetFullPath(Path.Combine(assetBasePath, item.MediaFileRelativePath));
-                    var mediaFileFullName = Path.GetFullPath(Path.Combine(mediaFileFullPath, item.MediaFileName));
-                    var mediaFileDirectory = new DirectoryInfo(mediaFileFullPath);
-
-                    if (!mediaFileDirectory.TryCreate())
+                    if (_overlayBehaviorConfiguration.ReapplyOverlays ||
+                        expirationDateChanged ||
+                        state is not { OverlayApplied: true })
                     {
-                        logger.LogInformation("Failed to create media file directory. Path: {Path}", mediaFileFullPath);
-                        skippedBecauseOfError++;
-                        continue;
-                    }
+                        state.MaintainerrCollectionId = collection.Id;
+                        state.LastChecked = DateTimeOffset.UtcNow;
+                        state.LastKnownExpirationDate = item.ExpirationDate;
 
-                    var backupFileFullPath =
-                        Path.GetFullPath(Path.Combine(backupAssetBasePath, item.MediaFileRelativePath));
-                    var backupFileFullName = Path.GetFullPath(Path.Combine(backupFileFullPath, item.MediaFileName));
-                    var backupFileDirectory = new DirectoryInfo(backupFileFullPath);
+                        var asset = new AssetPathInfo(assetBasePath, item);
 
-                    if (!backupFileDirectory.TryCreate())
-                    {
-                        logger.LogInformation("Failed to create backup file directory. Path: {Path}",
-                            backupFileFullPath);
-                        skippedBecauseOfError++;
-                        continue;
-                    }
-
-                    // Will get poster.original.jpg first, else poster.jpg if exists, or null
-                    var originalPoster =
-                        AssetManager.GetOriginalPoster(backupFileDirectory, mediaFileDirectory, item.MediaFileName);
-                    var originalPosterBackupFullName = backupFileFullName + AssetManager.BackupFileNameSuffix;
-
-                    if (originalPoster is { Exists: true })
-                    {
-                        mediaFileFullName += originalPoster.Extension;
-                        originalPosterBackupFullName += originalPoster.Extension;
-
-                        if (!File.Exists(originalPosterBackupFullName))
-                            File.Copy(originalPoster.FullName, originalPosterBackupFullName, overwrite: true);
-                    }
-                    else
-                    {
-                        // download original poster from plex instead
-                        var plexPoster = await plexClient.DownloadPlexImageAsync(item.OriginalPlexPosterUrl);
-
-                        if (plexPoster is { Exists: true } && plexPoster.IsImageByExtension())
+                        if (asset.Directory == null || !asset.Directory.TryCreate())
                         {
-                            mediaFileFullName += plexPoster.Extension;
-                            originalPosterBackupFullName += plexPoster.Extension;
-                            File.Copy(plexPoster.FullName, mediaFileFullName, overwrite: true);
-                            File.Copy(plexPoster.FullName, originalPosterBackupFullName, overwrite: true);
-                            File.Delete(plexPoster.FullName);
-                        }
-                        else
-                        {
+                            logger.LogInformation("Failed to create media file directory. Path: {Path}",
+                                asset.FilePath);
                             skippedBecauseOfError++;
-
-                            logger.LogInformation(
-                                "Could not find or fetch original poster for {PlexId} - {FriendlyTitle}", item.PlexId,
-                                item.FriendlyTitle);
                             continue;
                         }
-                    }
 
-                    state.PosterPath = mediaFileFullName;
-                    state.OriginalPosterPath = originalPosterBackupFullName;
-                    state.KometaLabelExists = item.KometaLabelExists;
+                        var backupAsset = new AssetPathInfo(backupAssetBasePath, item);
 
-                    // Apply overlay
-                    var overlayText = GetOverlayText(item);
-                    var result = overlayHelper.AddOverlay(item.PlexId, mediaFileFullName, overlayText, overlaySettings);
-
-                    if (result is { Exists: true })
-                    {
-                        try
+                        if (backupAsset.Directory == null || !backupAsset.Directory.TryCreate())
                         {
-                            File.Copy(result.FullName, mediaFileFullName, overwrite: true);
-                            File.Delete(result.FullName);
-                            state.OverlayApplied = true;
-                            state.PosterHash = null;
+                            logger.LogInformation("Failed to create backup file directory. Path: {Path}",
+                                backupAsset.FilePath);
+                            skippedBecauseOfError++;
+                            continue;
+                        }
 
-                            if (item.KometaLabelExists)
+                        var originalPosterBackup = Guard.Against.Null(await assetManager.GetAndBackupOriginalPoster(
+                                backupAsset, asset,
+                                item.MediaFileName, item.OriginalPlexPosterUrl),
+                            message:
+                            $"Could not find or fetch original poster for {item.PlexId} - {item.FriendlyTitle}");
+
+                        asset.UpdateExtension(originalPosterBackup);
+
+                        state.PosterPath = asset.FileName;
+                        state.OriginalPosterPath = originalPosterBackup.FullName;
+                        state.KometaLabelExists = item.KometaLabelExists;
+
+                        // Apply overlay
+                        var overlayText = GetOverlayText(item);
+
+                        var result =
+                            overlayHelper.AddOverlay(item.PlexId, asset.FileName, overlayText, overlaySettings);
+
+                        File.Copy(result.FullName, asset.FileName, overwrite: true);
+                        File.Delete(result.FullName);
+                        state.OverlayApplied = true;
+                        state.PosterHash = null;
+
+                        if (item.KometaLabelExists)
+                        {
+                            if (!await plexClient.RemoveKometaLabelFromItem(item.LibraryId, item.PlexId,
+                                    item.DataType))
                             {
-                                if (!await plexClient.RemoveKometaLabelFromItem(item.LibraryId, item.PlexId,
-                                        item.DataType))
-                                {
-                                    logger.LogInformation(
-                                        "Failed to remove Kometa Overlay label from PlexId: {PlexId} - {FriendlyTitle}",
-                                        item.PlexId,
-                                        item.FriendlyTitle);
-                                }
-
-                                state.KometaLabelExists = false;
+                                logger.LogInformation(
+                                    "Failed to remove Kometa Overlay label from PlexId: {PlexId} - {FriendlyTitle}",
+                                    item.PlexId,
+                                    item.FriendlyTitle);
                             }
 
-                            appliedOverlays++;
+                            state.KometaLabelExists = false;
+                        }
 
-                            logger.LogInformation(
-                                "Applied overlay and tracked state for PlexId {ItemPlexId} - {FriendlyTitle}",
-                                item.PlexId,
-                                item.FriendlyTitle);
-                        }
-                        catch (Exception ex)
-                        {
-                            state.OverlayApplied = false;
-                            state.PosterHash = null;
-                            logger.LogError(ex, "Error updating overlay");
-                            skippedBecauseOfError++;
-                            continue;
-                        }
+                        appliedOverlays++;
+
+                        logger.LogInformation(
+                            "Applied overlay and tracked state for PlexId {ItemPlexId} - {FriendlyTitle}",
+                            item.PlexId,
+                            item.FriendlyTitle);
                     }
                     else
                     {
-                        logger.LogInformation("Could not apply overlay for {ItemPlexId} - {FriendlyTitle}", item.PlexId,
-                            item.FriendlyTitle);
-                        skippedBecauseOfError++;
-                        state.OverlayApplied = false;
+                        // Already applied, update LastChecked
+                        skippedOverlays++;
+                        state.LastChecked = DateTime.UtcNow;
                     }
-                }
-                else
-                {
-                    // Already applied, update LastChecked
-                    skippedOverlays++;
-                    state.LastChecked = DateTime.UtcNow;
-                }
 
-                overlayStateManager.Upsert(state);
+                    overlayStateManager.Upsert(state);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error updating overlay for {PlexId} - {FriendlyTitle}", item.PlexId, item.FriendlyTitle);
+                    skippedBecauseOfError++;
+                }
             }
         }
 
         logger.LogInformation(
             "Overlay operations completed with {RemovedOverlays} removed, {AppliedOverlays} applied, {SkippedOverlays} skipped, and {SkippedDueToError} error skips",
             removedOverlays, appliedOverlays, skippedOverlays, skippedBecauseOfError);
+    }
+
+    private async Task<bool> RestoreOnly()
+    {
+        if (!this._overlayBehaviorConfiguration.RestoreOnly)
+        {
+            return false;
+        }
+
+        logger.LogWarning(
+            "[yellow bold]Restore Only[/] was set in configuration. Will restore all posters back to original");
+        var restoreItems = overlayStateManager.GetAppliedOverlays().ToList();
+
+        var count = 0;
+
+        foreach (var item in restoreItems)
+        {
+            if (await RestoreOriginalPoster(item, false))
+            {
+                count++;
+            }
+        }
+
+        logger.LogInformation("Restored {Count} images back to their originals", count);
+        return true;
     }
 
     private async Task<int> RestoreOriginalPostersMissingFromMaintainerr(List<MaintainerrCollection> collections)
@@ -287,7 +248,7 @@ public class OverlayManagerCommand(
         return false;
     }
 
-    private string GetOverlayText(OverlayManagerItem item)
+    private string GetOverlayText(PlexMetadataBuilderItem item)
     {
         var culture = new CultureInfo(_overlayConfiguration.Language);
         var formattedDate = item.ExpirationDate.ToString(_overlayConfiguration.DateFormat, culture);

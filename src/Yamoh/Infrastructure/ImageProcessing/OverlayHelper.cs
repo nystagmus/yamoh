@@ -8,7 +8,7 @@ namespace Yamoh.Infrastructure.ImageProcessing;
 
 public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayHelper> logger)
 {
-    public FileInfo? AddOverlay(
+    public FileInfo AddOverlay(
         int plexId,
         string imagePath,
         string text,
@@ -86,7 +86,7 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
         catch (Exception ex)
         {
             logger.LogError(ex, "Encountered an error while trying to read or write image file for {PlexId}", plexId);
-            return null;
+            throw;
         }
     }
 

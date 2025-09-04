@@ -2,7 +2,7 @@ using Yamoh.Domain.Maintainerr;
 
 namespace Yamoh.Features.OverlayManager;
 
-public class OverlayManagerItem
+public class PlexMetadataBuilderItem
 {
     public required int PlexId { get; init; }
     public required string FriendlyTitle { get; set; }

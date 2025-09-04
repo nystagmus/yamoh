@@ -11,25 +11,25 @@ using Yamoh.Infrastructure.External;
 namespace Yamoh.Features.OverlayManager;
 
 public class PlexMetadataBuilder(
-    ILogger<OverlayManagerCommand> logger,
+    ILogger<PlexMetadataBuilder> logger,
     IOptions<OverlayBehaviorConfiguration> overlayBehaviorConfigurationOptions,
     PlexClient plexClient,
     PlexAPI plexApi)
 {
     private readonly OverlayBehaviorConfiguration _overlayBehaviorConfiguration =
         overlayBehaviorConfigurationOptions.Value;
-    
+
     private GetAllLibrariesResponse? _allLibraries;
-    
-    public async Task<IEnumerable<OverlayManagerItem>> BuildFromMaintainerrCollection(MaintainerrCollection collection)
+
+    public async Task<IEnumerable<PlexMetadataBuilderItem>> BuildFromMaintainerrCollection(MaintainerrCollection collection)
     {
         if (collection.Media == null)
         {
-            return new List<OverlayManagerItem>();
+            return new List<PlexMetadataBuilderItem>();
         }
 
         var maintainerrMedia = collection.Media
-            .Select(x => new MaintainerrMediaDto { AddDate = x.AddDate, PlexId = x.PlexId })
+            .Select(x => new MaintainerrMediaDto(x.PlexId, x.AddDate))
             .ToList();
 
         var items = collection.Type switch
@@ -47,7 +47,7 @@ public class PlexMetadataBuilder(
         return items;
     }
 
-    private async Task<IEnumerable<OverlayManagerItem>> GatherMovieCollectionItems(string? collectionTitle,
+    private async Task<IEnumerable<PlexMetadataBuilderItem>> GatherMovieCollectionItems(string? collectionTitle,
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia)
     {
@@ -59,7 +59,7 @@ public class PlexMetadataBuilder(
             asChild: false,
             async (plexMeta, plexId, _) =>
             {
-                var items = new List<OverlayManagerItem>();
+                var items = new List<PlexMetadataBuilderItem>();
 
                 var friendlyTitle = Guard.Against.Null(plexMeta.Metadata[0].Title);
 
@@ -67,7 +67,7 @@ public class PlexMetadataBuilder(
                     nameof(GetMediaMetaDataPart.File));
 
                 var libraryInfo = await GetPlexItemLibraryInfoAsync(plexMeta, mediaFilePath);
-                if (libraryInfo == null) return new List<OverlayManagerItem>();
+                if (libraryInfo == null) return new List<PlexMetadataBuilderItem>();
 
                 // clean up relative path
                 mediaFilePath = mediaFilePath.Replace(libraryInfo.LibraryPath, string.Empty);
@@ -79,7 +79,7 @@ public class PlexMetadataBuilder(
 
                 mediaFilePath = Path.Join(libraryInfo.LibraryName, mediaFilePath);
 
-                items.Add(new OverlayManagerItem
+                items.Add(new PlexMetadataBuilderItem
                 {
                     PlexId = plexId,
                     FriendlyTitle = friendlyTitle,
@@ -94,7 +94,7 @@ public class PlexMetadataBuilder(
             });
     }
 
-    private async Task<IEnumerable<OverlayManagerItem>> GatherShowCollectionItems(string? collectionTitle,
+    private async Task<IEnumerable<PlexMetadataBuilderItem>> GatherShowCollectionItems(string? collectionTitle,
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia)
     {
@@ -111,9 +111,9 @@ public class PlexMetadataBuilder(
                 var showPath = Guard.Against.Null(plexMeta.Metadata[0].Location?[0].Path);
 
                 var libraryInfo = await GetPlexItemLibraryInfoAsync(plexMeta, showPath);
-                if (libraryInfo == null) return new List<OverlayManagerItem>();
+                if (libraryInfo == null) return new List<PlexMetadataBuilderItem>();
 
-                var item = new OverlayManagerItem
+                var item = new PlexMetadataBuilderItem
                 {
                     PlexId = plexId,
                     FriendlyTitle = friendlyTitle,
@@ -125,7 +125,7 @@ public class PlexMetadataBuilder(
                     MediaFileName = "poster",
                 };
 
-                var items = new List<OverlayManagerItem> { item };
+                var items = new List<PlexMetadataBuilderItem> { item };
 
                 if (!this._overlayBehaviorConfiguration.OverlaySeasonEpisodes)
                 {
@@ -147,7 +147,7 @@ public class PlexMetadataBuilder(
                 }
 
                 var childrenMaintainerrMedia = episodeIds
-                    .Select(x => new MaintainerrMediaDto { PlexId = x, AddDate = addDate })
+                    .Select(x => new MaintainerrMediaDto(x, addDate))
                     .ToList();
 
                 items.AddRange(await GatherSeasonCollectionItems(collectionTitle, deleteAfterDays,
@@ -157,7 +157,7 @@ public class PlexMetadataBuilder(
             });
     }
 
-    private async Task<IEnumerable<OverlayManagerItem>> GatherSeasonCollectionItems(
+    private async Task<IEnumerable<PlexMetadataBuilderItem>> GatherSeasonCollectionItems(
         string? collectionTitle,
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
@@ -183,7 +183,7 @@ public class PlexMetadataBuilder(
                 var parentMetadataResponse = await plexApi.Library.GetMediaMetaDataAsync(parentRequest);
 
                 if (parentMetadataResponse.StatusCode != (int)HttpStatusCode.OK)
-                    return new List<OverlayManagerItem>();
+                    return new List<PlexMetadataBuilderItem>();
 
                 var parentMetadata = Guard.Against.Null(parentMetadataResponse.Object?.MediaContainer);
 
@@ -192,14 +192,16 @@ public class PlexMetadataBuilder(
                 var showPath = Guard.Against.Null(parentMetadata.Metadata[0].Location?[0].Path);
 
                 var libraryInfo = await GetPlexItemLibraryInfoAsync(plexMeta, showPath);
-                if (libraryInfo == null) return new List<OverlayManagerItem>();
+                if (libraryInfo == null) return new List<PlexMetadataBuilderItem>();
 
                 var seasonIndex = plexMeta.Metadata[0].Index.ToString().PadLeft(2, '0');
 
-                var item = new OverlayManagerItem
+                friendlyTitle = $"{parentFriendlyTitle} - {friendlyTitle}";
+
+                var item = new PlexMetadataBuilderItem
                 {
                     PlexId = plexId,
-                    FriendlyTitle = $"{parentFriendlyTitle} - {friendlyTitle}",
+                    FriendlyTitle = friendlyTitle,
                     DataType = MaintainerrPlexDataType.Seasons,
                     LibraryName = libraryInfo.LibraryName,
                     LibraryId = (int)libraryInfo.LibrarySectionId,
@@ -214,7 +216,7 @@ public class PlexMetadataBuilder(
                     item.ParentPlexId = parentId;
                 }
 
-                var items = new List<OverlayManagerItem> { item };
+                var items = new List<PlexMetadataBuilderItem> { item };
 
                 if (!this._overlayBehaviorConfiguration.OverlaySeasonEpisodes)
                 {
@@ -236,7 +238,7 @@ public class PlexMetadataBuilder(
                 }
 
                 var childrenMaintainerrMedia = episodeIds
-                    .Select(x => new MaintainerrMediaDto { PlexId = x, AddDate = addDate })
+                    .Select(x => new MaintainerrMediaDto(x, addDate))
                     .ToList();
 
                 items.AddRange(await GatherEpisodeCollectionItems(collectionTitle, deleteAfterDays,
@@ -246,7 +248,7 @@ public class PlexMetadataBuilder(
             });
     }
 
-    private async Task<IEnumerable<OverlayManagerItem>> GatherEpisodeCollectionItems(
+    private async Task<IEnumerable<PlexMetadataBuilderItem>> GatherEpisodeCollectionItems(
         string? collectionTitle,
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
@@ -272,7 +274,7 @@ public class PlexMetadataBuilder(
                 var grandparentMetadataResponse = await plexApi.Library.GetMediaMetaDataAsync(grandparentRequest);
 
                 if (grandparentMetadataResponse.StatusCode != (int)HttpStatusCode.OK)
-                    return new List<OverlayManagerItem>();
+                    return new List<PlexMetadataBuilderItem>();
 
                 var grandparentMetadata = Guard.Against.Null(grandparentMetadataResponse.Object?.MediaContainer);
 
@@ -281,7 +283,7 @@ public class PlexMetadataBuilder(
                 var showPath = Guard.Against.Null(grandparentMetadata.Metadata[0].Location?[0].Path);
 
                 var libraryInfo = await GetPlexItemLibraryInfoAsync(plexMeta, showPath);
-                if (libraryInfo == null) return new List<OverlayManagerItem>();
+                if (libraryInfo == null) return new List<PlexMetadataBuilderItem>();
 
                 var seasonIndex = plexMeta.Metadata[0].ParentIndex.ToString()?.PadLeft(2, '0');
                 var episodeIndex = plexMeta.Metadata[0].Index.ToString().PadLeft(2, '0');
@@ -289,7 +291,7 @@ public class PlexMetadataBuilder(
 
                 var fullFriendlyTitle = $"{grandparentFriendlyTitle} - {episodeFileNameFormat} - {friendlyTitle}";
 
-                var item = new OverlayManagerItem
+                var item = new PlexMetadataBuilderItem
                 {
                     PlexId = plexId,
                     FriendlyTitle = fullFriendlyTitle,
@@ -307,20 +309,24 @@ public class PlexMetadataBuilder(
                     item.ParentPlexId = parentId;
                 }
 
-                return new List<OverlayManagerItem> { item };
+                return new List<PlexMetadataBuilderItem> { item };
             });
     }
 
-    private async Task<IEnumerable<OverlayManagerItem>> GatherCollectionItems(
+    private async Task<IEnumerable<PlexMetadataBuilderItem>> GatherCollectionItems(
         MaintainerrPlexDataType dataType,
         string? collectionTitle,
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
         bool asChild,
-        Func<GetMediaMetaDataMediaContainer, int, DateTime, Task<IEnumerable<OverlayManagerItem>>> buildItems)
+        Func<GetMediaMetaDataMediaContainer, int, DateTime, Task<IEnumerable<PlexMetadataBuilderItem>>> buildItems)
     {
-        logger.LogInformation("Processing {DataType} collection: {Collection}", dataType, collectionTitle);
-        var items = new List<OverlayManagerItem>();
+        if (asChild)
+        {
+            logger.LogDebug("Processing {DataType} collection as children", dataType);
+        }
+
+        var items = new List<PlexMetadataBuilderItem>();
 
         if (maintainerrMedia.Count == 0)
         {
@@ -331,7 +337,7 @@ public class PlexMetadataBuilder(
         foreach (var maintainerrItem in maintainerrMedia)
         {
             var plexId = maintainerrItem.PlexId;
-            logger.LogInformation("Fetching Plex Metadata for {PlexId}", plexId);
+            logger.LogDebug("Fetching Plex Metadata for {PlexId}", plexId);
 
             try
             {
@@ -389,11 +395,10 @@ public class PlexMetadataBuilder(
     private async Task<PlexLibraryInfoDto?> GetPlexItemLibraryInfoAsync(GetMediaMetaDataMediaContainer plexMeta,
         string showPath)
     {
-        var libraryInfo = new PlexLibraryInfoDto
-        {
-            LibrarySectionId = Guard.Against.Null(plexMeta.Metadata[0].LibrarySectionID,
-                nameof(GetMediaMetaDataMetadata.LibrarySectionID))
-        };
+
+        var librarySectionId = Guard.Against.Null(plexMeta.Metadata[0].LibrarySectionID,
+            nameof(GetMediaMetaDataMetadata.LibrarySectionID));
+
 
         var libraries = await GetAllLibraries();
 
@@ -401,7 +406,7 @@ public class PlexMetadataBuilder(
             nameof(GetAllLibrariesMediaContainer.Directory));
 
         var sectionPaths = directories
-            .FirstOrDefault(x => x.Key == libraryInfo.LibrarySectionId.ToString())?.Location.Select(p => p.Path)
+            .FirstOrDefault(x => x.Key == librarySectionId.ToString())?.Location.Select(p => p.Path)
             .ToList();
 
         if (sectionPaths is null || sectionPaths.Count == 0)
@@ -411,17 +416,15 @@ public class PlexMetadataBuilder(
         if (libraryPath is null)
             return null;
 
-        libraryInfo.LibraryPath = libraryPath;
-
-        libraryInfo.LibraryName = Guard.Against.Null(plexMeta.LibrarySectionTitle,
+        var libraryName = Guard.Against.Null(plexMeta.LibrarySectionTitle,
             nameof(GetMediaMetaDataMediaContainer.LibrarySectionTitle));
 
         showPath = showPath.Replace(libraryPath, string.Empty);
-        libraryInfo.CleanTvShowPath = Path.Join(libraryInfo.LibraryName, showPath);
+        var cleanTvShowPath = Path.Join(libraryName, showPath);
 
-        return libraryInfo;
+        return new PlexLibraryInfoDto(librarySectionId, libraryPath, libraryName, cleanTvShowPath);
     }
-    
+
     private async Task<GetAllLibrariesResponse> GetAllLibraries()
     {
         var libraries = this._allLibraries ?? await plexApi.Library.GetAllLibrariesAsync();
@@ -436,17 +439,12 @@ public class PlexMetadataBuilder(
         throw new InvalidOperationException("Plex Library metadata could not be retrieved");
     }
 
-    private class MaintainerrMediaDto
-    {
-        public required int PlexId { get; init; }
-        public required DateTime AddDate { get; init; }
-    }
+    private record MaintainerrMediaDto(int PlexId, DateTime AddDate);
 
-    private class PlexLibraryInfoDto
-    {
-        public long LibrarySectionId { get; set; }
-        public string LibraryPath { get; set; }
-        public string LibraryName { get; set; }
-        public string CleanTvShowPath { get; set; }
-    }
+    private record PlexLibraryInfoDto(
+        long LibrarySectionId,
+        string LibraryPath,
+        string LibraryName,
+        string CleanTvShowPath);
+
 }
