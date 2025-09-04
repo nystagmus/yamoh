@@ -24,7 +24,18 @@ public static class YamohConfigurationExtensions
             var position = positionProperty?.GetValue(o)?.ToString();
             foreach (var prop in props)
             {
-                var value = prop.GetValue(o)?.ToString() ?? "<null>";
+                var valueObj = prop.GetValue(o);
+                string value;
+                if (valueObj is IEnumerable<string> stringList && !(valueObj is string))
+                {
+                    // Escape markup and join list items
+                    value = string.Join(", ", stringList.Select(Markup.Escape));
+                }
+                else
+                {
+                    value = valueObj?.ToString() ?? "<null>";
+                    value = Markup.Escape(value);
+                }
                 table.AddRow(position ?? "Unknown", prop.Name, value);
             }
         }

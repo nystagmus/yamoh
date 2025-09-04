@@ -10,4 +10,6 @@ public class OverlayBehaviorConfiguration
     public bool OverlaySeasonEpisodes { get; init; }
     public bool ManageKometaOverlayLabel { get; init; }
     public bool RestoreOnly { get; init; }
+
+    public List<string> MaintainerrCollectionsFilter { get; set; } = [];
 }

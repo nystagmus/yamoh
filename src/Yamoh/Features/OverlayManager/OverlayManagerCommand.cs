@@ -45,8 +45,7 @@ public class OverlayManagerCommand(
         if (await RestoreOnly()) return;
 
         // Get collections from Maintainerr
-        var collections = Guard.Against.NullOrEmpty((await maintainerrClient.GetCollections())
-                .Where(x => x is { IsActive: true, DeleteAfterDays: > 0 }),
+        var collections = Guard.Against.NullOrEmpty(await maintainerrClient.GetCollections(),
                 message: "Maintainerr returned zero active collections. Check configuration.")
             .ToList();
 
@@ -56,9 +55,26 @@ public class OverlayManagerCommand(
         var skippedBecauseOfError = 0;
         var overlaySettings = AddOverlaySettings.FromConfig(_overlayConfiguration, _yamohConfiguration.FontFullPath);
 
+        // if collection filter has any entries then we filter on it
+        collections = FilterMaintainerrCollections(collections);
+
         // For each collection, process overlays and update state
         foreach (var collection in collections)
         {
+            if (!collection.IsActive)
+            {
+                logger.LogInformation("Collection {CollectionName} is not an active collection in Maintainerr",
+                    collection.Title);
+                continue;
+            }
+
+            if (collection.DeleteAfterDays <= 0)
+            {
+                logger.LogInformation("Collection {CollectionName} does not have a 'Delete after days' value set",
+                    collection.Title);
+                continue;
+            }
+
             var items = await plexMetadataBuilder.BuildFromMaintainerrCollection(collection);
 
             foreach (var item in items)
@@ -163,7 +179,8 @@ public class OverlayManagerCommand(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Error updating overlay for {PlexId} - {FriendlyTitle}", item.PlexId, item.FriendlyTitle);
+                    logger.LogError(ex, "Error updating overlay for {PlexId} - {FriendlyTitle}", item.PlexId,
+                        item.FriendlyTitle);
                     skippedBecauseOfError++;
                 }
             }
@@ -172,6 +189,45 @@ public class OverlayManagerCommand(
         logger.LogInformation(
             "Overlay operations completed with {RemovedOverlays} removed, {AppliedOverlays} applied, {SkippedOverlays} skipped, and {SkippedDueToError} error skips",
             removedOverlays, appliedOverlays, skippedOverlays, skippedBecauseOfError);
+    }
+
+    private List<MaintainerrCollection> FilterMaintainerrCollections(List<MaintainerrCollection> collections)
+    {
+        var filter = this._overlayBehaviorConfiguration.MaintainerrCollectionsFilter;
+
+        if (filter.Count == 0)
+        {
+            logger.LogInformation(
+                "No Maintainerr Collections filter found, processing all active collections with 'DeleteAfterDays' value set");
+            return collections.Where(x => x is { IsActive: true, DeleteAfterDays: > 0 }).ToList();
+        }
+
+        var collectionTitles = collections
+            .Select(x => x.Title?.Trim().ToLowerInvariant())
+            .Where(x => x != null)
+            .ToHashSet();
+
+        var missingFilters = filter
+            .Select(f => new
+            {
+                Lower = f.Trim().ToLowerInvariant(),
+                Original = f
+            })
+            .Where(f => !collectionTitles.Contains(f.Lower))
+            .ToList();
+
+        foreach (var missing in missingFilters)
+        {
+            logger.LogWarning("Maintainerr Collections Filter entry {Missing} does not exist in Maintainerr collections",
+                missing.Original);
+        }
+
+        collections = collections
+            .Where(x => x.Title != null && filter
+                .Any(f => x.Title.Trim().Equals(f.Trim(), StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        return collections;
     }
 
     private async Task<bool> RestoreOnly()
