@@ -111,11 +111,18 @@ services:
 | OverlayBehavior:OverlaySeasonEpisodes| OVERLAYBEHAVIOR__OVERLAYSEASONEPISODES | true                  | Apply overlay to a Season's episodes (if Maintainerr collection is Season type, or OverlayShowSeasons == true ) |
 | OverlayBehavior:RestoreOnly         | OVERLAYBEHAVIOR__RESTOREONLY           | false                 | Only restore original posters, do not apply overlays. Helpful to roll back changes made by this application |
 | OverlayBehavior:ManageKometaOverlayLabel | OVERLAYBEHAVIOR__MANAGEKOMETAOVERLAYLABEL  | false        | Remove the Kometa-specific label `Overlay` from Plex items when making changes. This informs Kometa to re-apply its own overlays and update the poster from assets. |
+| OverlayBehavior:MaintainerrCollectionsFilter | OVERLAYBEHAVIOR__MAINTAINERRCOLLECTIONSFILTER | [] (empty list) | List of Maintainerr collection titles to process. If empty, all active collections with 'DeleteAfterDays' set will be processed. Use to restrict overlays to specific collections by name. |
 | Schedule:Enabled          | SCHEDULE__ENABLED            | true                  | Enable scheduled overlay runs based on cron schedule. Otherwise Yamoh only works with cli arguments. |
 | Schedule:RunOnStart       | SCHEDULE__RUNONSTART         | false                 | FUTURE: Run overlay manager on app start. Run on app start, and on cron schedule afterwards |
 | Schedule:OverlayManagerCronSchedule | SCHEDULE__OVERLAYMANAGERCRONSCHEDULE | "30 * * * *" | Cron schedule for overlay manager.|
 
-> Environment variable names use double underscores (`__`) to represent nested config keys.
+
+> [!Note]
+> 1. Environment variable names use double underscores (`__`) to represent nested config keys.
+>
+> 2. For array or list configuration values (e.g., `MaintainerrCollectionsFilter`), environment variables should be set as a comma-separated string. For example:
+>
+> `OVERLAYBEHAVIOR__MAINTAINERRCOLLECTIONSFILTER=Movies,Shows,My Custom Collection`
 
 ## Contributing
 Pull requests and issues are welcome! Please see `.github/ISSUE_TEMPLATE` for bug reports.
