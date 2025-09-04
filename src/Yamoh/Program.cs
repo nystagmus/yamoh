@@ -89,6 +89,7 @@ builder.Services.AddTransient<MaintainerrClient>();
 builder.Services.AddTransient<PlexClient>();
 builder.Services.AddTransient<OverlayHelper>();
 builder.Services.AddTransient<AssetManager>();
+builder.Services.AddTransient<PlexMetadataBuilder>();
 builder.Services.AddSingleton<OverlayStateManager>();
 builder.Services.AddAllTypesOf<IYamohCommand>(Assembly.GetExecutingAssembly());
 

@@ -17,5 +17,4 @@ public class OverlayManagerItem
     public int? ParentPlexId { get; set; }
     public bool KometaLabelExists { get; set; }
     public required int LibraryId { get; set; }
-    public required MaintainerrPlexDataType MaintainerrPlexType { get; set; }
 }
