@@ -100,11 +100,18 @@ services:
 | Overlay:VerticalAlign       | OVERLAY__VERTICALALIGN         | "bottom"              | Vertical alignment, top, center, bottom |
 | Overlay:BackWidth           | OVERLAY__BACKWIDTH             | 1920                  | Overlay background width |
 | Overlay:BackHeight          | OVERLAY__BACKHEIGHT            | 0                     | Overlay background height |
-| Overlay:DateFormat          | OVERLAY__DATEFORMAT            | "MMM d"               | DateTime format for overlay. See [Date and Time Format Strings](https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings) for examples |
 | Overlay:OverlayText         | OVERLAY__OVERLAYTEXT           | "Leaving"             | Overlay text prefix for date |
-| Overlay:EnableDaySuffix     | OVERLAY__ENABLEDAYSUFFIX       | true                  | Show day suffix in overlay (e.g. 12**th**, 31**st**, etc.) |
 | Overlay:EnableUppercase     | OVERLAY__ENABLEUPPERCASE       | true                  | Uppercase overlay text |
 | Overlay:Language            | OVERLAY__LANGUAGE              | "en-US"               | Overlay language for rendering the DateTime string. |
+| Overlay:OverlayTextMode     | OVERLAY__OVERLAYTEXTMODE       | "Date"                | Mode for rendering the text. `Date` for "{OverlayText}{Date}" like "Leaving Aug 15th" or `DaysLeft` for "{OverlayText}{HumanizedTimeSpan}" like "Leaving in 4 days" |
+| Overlay:DateFormat          | OVERLAY__DATEFORMAT            | "MMM d"               | DateTime format for overlay. See [Date and Time Format Strings](https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings) for examples |
+
+| Overlay:DateEnableDaySuffix     | OVERLAY__ENABLEDAYSUFFIX       | true                  | Show day suffix in overlay (e.g. 12**th**, 31**st**, etc.) |
+| Overlay:DaysLeftMinUnit     | OVERLAY__DAYSLEFTMINUNIT       | "Day"                 | [Humanizer](https://github.com/Humanizr/Humanizer) [TimeUnit enum](https://github.com/Humanizr/Humanizer/blob/main/src/Humanizer/Localisation/TimeUnit.cs) value to use for minimum resolution of Days Left calculation |
+| Overlay:DaysLeftMaxUnit     | OVERLAY__DAYSLEFTMAXUNIT       | "Day"                 | Humanizer TimeUnit enum value to use for maximum resolution of Days Left calculation |
+| Overlay:DaysLeftPrecision   | OVERLAY__DAYSLEFTPRECISION     | 2                     | Humanizer Granularity of "Days Left" calculation. |
+
+
 | OverlayBehavior:UseAssetMode        | OVERLAYBEHAVIOR__USEASSETMODE          | true                  | FUTURE: Store overlays in asset directory (true) or manage in Plex (false) |
 | OverlayBehavior:ReapplyOverlays     | OVERLAYBEHAVIOR__REAPPLYOVERLAYS       | false                 | Force reapply overlays |
 | OverlayBehavior:OverlayShowSeasons  | OVERLAYBEHAVIOR__OVERLAYSHOWSEASONS    | true                  | Apply overlay to a Show's seasons (if Maintainerr collection is Show type) |

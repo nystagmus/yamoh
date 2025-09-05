@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Yamoh.Infrastructure;
 using Yamoh.Infrastructure.Configuration;
+using Yamoh.Infrastructure.FileProcessing;
 using Yamoh.Infrastructure.ImageProcessing;
 
 namespace Yamoh.Features.OverlayTestImage;
@@ -32,27 +33,33 @@ public class OverlayTestImageCommand(
         {
             try
             {
-                var tempPath = Path.Combine(this._yamohConfiguration.TempImageFullPath,
-                    $"{dateString}_overlay_test_{i:00}.jpg");
-
                 // create a test image with a gradient background
                 var startColor = GenerateRandomColor();
+
                 var endColor = GenerateRandomColor();
 
                 using var image = new MagickImage($"gradient:{startColor}-{endColor}", width, height);
-                image.Format = MagickFormat.Jpg;
-                await image.WriteAsync(tempPath, cancellationToken);
 
-                logger.LogInformation("Test image created at {TempPath}", tempPath);
+                image.Format = MagickFormat.Jpg;
+
+                var tempPathInfo = new FileInfo(Path.Combine(this._yamohConfiguration.TempImageFullPath,
+                    $"{dateString}_overlay_test_{i:00}.jpg"));
+                var tempPath = new AssetPathInfo(tempPathInfo);
+
+                await image.WriteAsync(tempPath.File.FullName, cancellationToken);
+
+                logger.LogDebug("Test image created at {TempPath}", tempPath.File.FullName);
 
                 // Apply overlay
                 var overlaySettings = AddOverlaySettings.FromConfig(
                     _overlayConfiguration,
                     _yamohConfiguration.FontFullPath);
 
-                var days = this._rand.Next(1, 60);
+                var days = i * 5 + 1;
 
-                var overlayText = _overlayConfiguration.GetOverlayText(DateTimeOffset.UtcNow.AddDays(days));
+                var expirationDate = DateTimeOffset.UtcNow.AddDays(days);
+
+                var overlayText = _overlayConfiguration.GetOverlayText(expirationDate);
 
                 var result = overlayHelper.AddOverlay(
                     0,
@@ -61,10 +68,10 @@ public class OverlayTestImageCommand(
                     overlaySettings);
 
                 var finalPath = Path.Combine(this._yamohConfiguration.TempImageFullPath,
-                    $"{dateString}_overlay_test_{i:00}_final.jpg");
-                File.Copy(result.FullName, finalPath, overwrite: true);
-                File.Delete(result.FullName);
-                File.Delete(tempPath);
+                    $"{dateString}_overlay_test_{i:00}_expiration_{expirationDate:yy-MM-dd}_final.jpg");
+                result.File.CopyTo(finalPath, overwrite: true);
+                result.File.Delete();
+                tempPathInfo.Delete();
 
                 logger.LogInformation("Overlay applied and saved at {FinalPath}", finalPath);
             }
@@ -73,6 +80,7 @@ public class OverlayTestImageCommand(
                 logger.LogError(ex, "Error while generating overlay image");
             }
         }
+        logger.LogInformation("Test images created");
     }
 
     private MagickColor GenerateRandomColor()
