@@ -1,6 +1,6 @@
 ﻿FROM mcr.microsoft.com/dotnet/runtime:9.0 AS base
-ARG PUID=0
-ARG PGID=0
+ARG PUID=99
+ARG PGID=100
 ENV PUID=$PUID
 ENV PGID=$PGID
 RUN groupadd -g $PGID appgroup && useradd -u $PUID -g appgroup -s /bin/bash appuser
