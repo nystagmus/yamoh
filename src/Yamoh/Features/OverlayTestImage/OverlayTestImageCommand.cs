@@ -30,41 +30,48 @@ public class OverlayTestImageCommand(
 
         for (var i = 0; i < 10; i++)
         {
-            var tempPath = Path.Combine(this._yamohConfiguration.TempImageFullPath,
-                $"{dateString}_overlay_test_{i:00}.jpg");
+            try
+            {
+                var tempPath = Path.Combine(this._yamohConfiguration.TempImageFullPath,
+                    $"{dateString}_overlay_test_{i:00}.jpg");
 
-            // create a test image with a gradient background
-            var startColor = GenerateRandomColor();
-            var endColor = GenerateRandomColor();
+                // create a test image with a gradient background
+                var startColor = GenerateRandomColor();
+                var endColor = GenerateRandomColor();
 
-            using var image = new MagickImage($"gradient:{startColor}-{endColor}", width, height);
-            image.Format = MagickFormat.Jpg;
-            await image.WriteAsync(tempPath, cancellationToken);
+                using var image = new MagickImage($"gradient:{startColor}-{endColor}", width, height);
+                image.Format = MagickFormat.Jpg;
+                await image.WriteAsync(tempPath, cancellationToken);
 
-            logger.LogInformation("Test image created at {TempPath}", tempPath);
+                logger.LogInformation("Test image created at {TempPath}", tempPath);
 
-            // Apply overlay
-            var overlaySettings = AddOverlaySettings.FromConfig(
-                _overlayConfiguration,
-                _yamohConfiguration.FontFullPath);
+                // Apply overlay
+                var overlaySettings = AddOverlaySettings.FromConfig(
+                    _overlayConfiguration,
+                    _yamohConfiguration.FontFullPath);
 
-            var days = this._rand.Next(1, 60);
+                var days = this._rand.Next(1, 60);
 
-            var overlayText = _overlayConfiguration.GetOverlayText(DateTimeOffset.UtcNow.AddDays(days));
+                var overlayText = _overlayConfiguration.GetOverlayText(DateTimeOffset.UtcNow.AddDays(days));
 
-            var result = overlayHelper.AddOverlay(
-                0,
-                tempPath,
-                overlayText,
-                overlaySettings);
+                var result = overlayHelper.AddOverlay(
+                    0,
+                    tempPath,
+                    overlayText,
+                    overlaySettings);
 
-            var finalPath = Path.Combine(this._yamohConfiguration.TempImageFullPath,
-                $"{dateString}_overlay_test_{i:00}_final.jpg");
-            File.Copy(result.FullName, finalPath, overwrite: true);
-            File.Delete(result.FullName);
-            File.Delete(tempPath);
+                var finalPath = Path.Combine(this._yamohConfiguration.TempImageFullPath,
+                    $"{dateString}_overlay_test_{i:00}_final.jpg");
+                File.Copy(result.FullName, finalPath, overwrite: true);
+                File.Delete(result.FullName);
+                File.Delete(tempPath);
 
-            logger.LogInformation("Overlay applied and saved at {FinalPath}", finalPath);
+                logger.LogInformation("Overlay applied and saved at {FinalPath}", finalPath);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error while generating overlay image");
+            }
         }
     }
 

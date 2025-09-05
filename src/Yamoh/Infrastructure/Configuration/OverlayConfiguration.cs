@@ -21,7 +21,7 @@ public class OverlayConfiguration
     [Range(0.0, 1.0, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
     public double BackTransparency { get; init; } = 1.00;
 
-    [Range(0.0, double.MaxValue, ErrorMessage = "Value for {0} must be greater than {1}.")]
+    [Range(0.0, 500d, ErrorMessage = "Value for {0} must be greater than {1}.")]
     public double FontSize { get; init; } = 65d;
 
     public int Padding { get; init; } = 15;

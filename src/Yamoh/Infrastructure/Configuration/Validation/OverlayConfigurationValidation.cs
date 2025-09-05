@@ -55,7 +55,7 @@ public class OverlayConfigurationValidation(IConfiguration config) : IValidateOp
             var test = new ImageMagick.MagickColor(colorString);
             return true;
         }
-        catch (ArgumentException _)
+        catch (ArgumentException)
         {
             return false;
         }
