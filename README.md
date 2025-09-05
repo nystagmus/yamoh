@@ -115,6 +115,7 @@ services:
 | Schedule:Enabled          | SCHEDULE__ENABLED            | true                  | Enable scheduled overlay runs based on cron schedule. Otherwise Yamoh only works with cli arguments. |
 | Schedule:RunOnStart       | SCHEDULE__RUNONSTART         | false                 | FUTURE: Run overlay manager on app start. Run on app start, and on cron schedule afterwards |
 | Schedule:OverlayManagerCronSchedule | SCHEDULE__OVERLAYMANAGERCRONSCHEDULE | "30 * * * *" | Cron schedule for overlay manager.|
+| Logging:MinimumLevel:Default                    | LOGGING__MINIMUMLEVEL__DEFAULT                         | Information                  | Default minimum logging level.    |
 
 
 > [!Note]

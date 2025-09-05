@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
+using Serilog.Settings.Configuration;
 using Serilog.Sinks.Spectre;
 using Spectre.Console;
 using Yamoh.Domain.State;
@@ -31,9 +32,7 @@ if (AppEnvironment.IsDocker)
 }
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+    .MinimumLevel.Debug()
     .WriteTo.Spectre(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File(Path.Combine(AppEnvironment.LogFolder, "yamoh.log"), rollingInterval: RollingInterval.Day)
     .CreateLogger();
@@ -64,7 +63,18 @@ builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: 
 
 // Logging
 builder.Logging.ClearProviders();
-builder.Logging.AddSerilog(Log.Logger);
+
+// Rebuild serilog using configuration
+Log.CloseAndFlush();
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration, new ConfigurationReaderOptions { SectionName = "Logging" })
+    .Enrich.FromLogContext()
+    .WriteTo.Spectre()
+    .WriteTo.File(Path.Combine(AppEnvironment.LogFolder, "yamoh.log"), rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Logging.AddSerilog();
 
 builder.Services.AddOptions<YamohConfiguration>().Bind(builder.Configuration.GetSection(YamohConfiguration.Position))
     .ValidateDataAnnotations().ValidateOnStart();
@@ -149,6 +159,7 @@ catch (OptionsValidationException ex)
     {
         Log.Logger.Error(ex, "Configuration validation error: {ValidationFailure}", validationFailure);
     }
+
     return 0;
 }
 catch (Exception ex)
