@@ -83,38 +83,47 @@ services:
 | Yamoh:PlexToken           | YAMOH__PLEXTOKEN            | ""                    | Plex API token. See [Finding a Plex Token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) |
 | Yamoh:MaintainerrUrl      | YAMOH__MAINTAINERRURL        | ""                    | Maintainerr API URL. Include port if required (e.g. `http://maintainerr:6246`)|
 | Yamoh:TempImagePath       | YAMOH__TEMPIMAGEPATH         | "Temp"                | Temporary image folder |
-| Yamoh:UseAssetMode        | YAMOH__USEASSETMODE          | true                  | FUTURE: Store overlays in asset directory (true) or manage in Plex (false) |
 | Yamoh:AssetBasePath       | YAMOH__ASSETBASEPATH         | "assets"              | Base path for asset overlays |
 | Yamoh:BackupImagePath     | YAMOH__BACKUPIMAGEPATH       | "assetsbackup"        | Path for backup of original posters |
 | Yamoh:FontPath            | YAMOH__FONTPATH              | "Fonts"               | Path to font files |
-| Yamoh:FontName            | YAMOH__FONTNAME              | "AvenirNextLTPro-Bold"| Font name for overlay text |
-| Yamoh:FontColor           | YAMOH__FONTCOLOR             | "#FFFFFF"             | Overlay text color |
-| Yamoh:FontTransparency    | YAMOH__FONTTRANSPARENCY      | 0.70                  | Overlay text transparency. Percentage value from 0.00 (Fully transparent) - 1.00 (Opaque) |
-| Yamoh:BackColor           | YAMOH__BACKCOLOR             | "#7f161b"             | Overlay background color |
-| Yamoh:BackTransparency    | YAMOH__BACKTRANSPARENCY      | 0.70                  | Overlay background transparency. Percentage value from 0.00 (Fully transparent) - 1.00 (Opaque) |
-| Yamoh:FontSize            | YAMOH__FONTSIZE              | 75                    | Overlay text font size |
-| Yamoh:Padding             | YAMOH__PADDING               | 20                    | Padding around overlay text in background container |
-| Yamoh:BackRadius          | YAMOH__BACKRADIUS            | 0                     | Overlay background corner radius |
-| Yamoh:HorizontalOffset    | YAMOH__HORIZONTALOFFSET      | 0                     | Horizontal offset for overlay |
-| Yamoh:HorizontalAlign     | YAMOH__HORIZONTALALIGN       | "center"              | Horizontal alignment. left, center, right |
-| Yamoh:VerticalOffset      | YAMOH__VERTICALOFFSET        | 0                     | Vertical offset for overlay |
-| Yamoh:VerticalAlign       | YAMOH__VERTICALALIGN         | "bottom"              | Vertical alignment, top, center, bottom |
-| Yamoh:BackWidth           | YAMOH__BACKWIDTH             | 1920                  | Overlay background width |
-| Yamoh:BackHeight          | YAMOH__BACKHEIGHT            | 0                     | Overlay background height |
-| Yamoh:DateFormat          | YAMOH__DATEFORMAT            | "MMM d"               | DateTime format for overlay. See [Date and Time Format Strings](https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings) for examples |
-| Yamoh:OverlayText         | YAMOH__OVERLAYTEXT           | "Leaving"             | Overlay text prefix for date |
-| Yamoh:EnableDaySuffix     | YAMOH__ENABLEDAYSUFFIX       | true                  | Show day suffix in overlay (e.g. 12**th**, 31**st**, etc.) |
-| Yamoh:EnableUppercase     | YAMOH__ENABLEUPPERCASE       | true                  | Uppercase overlay text |
-| Yamoh:Language            | YAMOH__LANGUAGE              | "en-US"               | Overlay language for rendering the DateTime string. |
-| Yamoh:ReapplyOverlays     | YAMOH__REAPPLYOVERLAYS       | false                 | Force reapply overlays |
-| Yamoh:OverlayShowSeasons  | YAMOH__OVERLAYSHOWSEASONS    | true                  | Apply overlay to a Show's seasons (if Maintainerr collection is Show type) |
-| Yamoh:OverlaySeasonEpisodes| YAMOH__OVERLAYSEASONEPISODES | true                  | Apply overlay to a Season's episodes (if Maintainerr collection is Season type, or OverlayShowSeasons == true ) |
-| Yamoh:RestoreOnly         | YAMOH__RESTOREONLY           | false                 | Only restore original posters, do not apply overlays. Helpful to roll back changes made by this application |
+| Overlay:FontName            | OVERLAY__FONTNAME              | "AvenirNextLTPro-Bold"| Font name for overlay text |
+| Overlay:FontColor           | OVERLAY__FONTCOLOR             | "#FFFFFF"             | Overlay text color |
+| Overlay:FontTransparency    | OVERLAY__FONTTRANSPARENCY      | 0.70                  | Overlay text transparency. Percentage value from 0.00 (Fully transparent) - 1.00 (Opaque) |
+| Overlay:BackColor           | OVERLAY__BACKCOLOR             | "#7f161b"             | Overlay background color |
+| Overlay:BackTransparency    | OVERLAY__BACKTRANSPARENCY      | 0.70                  | Overlay background transparency. Percentage value from 0.00 (Fully transparent) - 1.00 (Opaque) |
+| Overlay:FontSize            | OVERLAY__FONTSIZE              | 75                    | Overlay text font size |
+| Overlay:Padding             | OVERLAY__PADDING               | 20                    | Padding around overlay text in background container |
+| Overlay:BackRadius          | OVERLAY__BACKRADIUS            | 0                     | Overlay background corner radius |
+| Overlay:HorizontalOffset    | OVERLAY__HORIZONTALOFFSET      | 0                     | Horizontal offset for overlay |
+| Overlay:HorizontalAlign     | OVERLAY__HORIZONTALALIGN       | "center"              | Horizontal alignment. left, center, right |
+| Overlay:VerticalOffset      | OVERLAY__VERTICALOFFSET        | 0                     | Vertical offset for overlay |
+| Overlay:VerticalAlign       | OVERLAY__VERTICALALIGN         | "bottom"              | Vertical alignment, top, center, bottom |
+| Overlay:BackWidth           | OVERLAY__BACKWIDTH             | 1920                  | Overlay background width |
+| Overlay:BackHeight          | OVERLAY__BACKHEIGHT            | 0                     | Overlay background height |
+| Overlay:DateFormat          | OVERLAY__DATEFORMAT            | "MMM d"               | DateTime format for overlay. See [Date and Time Format Strings](https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings) for examples |
+| Overlay:OverlayText         | OVERLAY__OVERLAYTEXT           | "Leaving"             | Overlay text prefix for date |
+| Overlay:EnableDaySuffix     | OVERLAY__ENABLEDAYSUFFIX       | true                  | Show day suffix in overlay (e.g. 12**th**, 31**st**, etc.) |
+| Overlay:EnableUppercase     | OVERLAY__ENABLEUPPERCASE       | true                  | Uppercase overlay text |
+| Overlay:Language            | OVERLAY__LANGUAGE              | "en-US"               | Overlay language for rendering the DateTime string. |
+| OverlayBehavior:UseAssetMode        | OVERLAYBEHAVIOR__USEASSETMODE          | true                  | FUTURE: Store overlays in asset directory (true) or manage in Plex (false) |
+| OverlayBehavior:ReapplyOverlays     | OVERLAYBEHAVIOR__REAPPLYOVERLAYS       | false                 | Force reapply overlays |
+| OverlayBehavior:OverlayShowSeasons  | OVERLAYBEHAVIOR__OVERLAYSHOWSEASONS    | true                  | Apply overlay to a Show's seasons (if Maintainerr collection is Show type) |
+| OverlayBehavior:OverlaySeasonEpisodes| OVERLAYBEHAVIOR__OVERLAYSEASONEPISODES | true                  | Apply overlay to a Season's episodes (if Maintainerr collection is Season type, or OverlayShowSeasons == true ) |
+| OverlayBehavior:RestoreOnly         | OVERLAYBEHAVIOR__RESTOREONLY           | false                 | Only restore original posters, do not apply overlays. Helpful to roll back changes made by this application |
+| OverlayBehavior:ManageKometaOverlayLabel | OVERLAYBEHAVIOR__MANAGEKOMETAOVERLAYLABEL  | false        | Remove the Kometa-specific label `Overlay` from Plex items when making changes. This informs Kometa to re-apply its own overlays and update the poster from assets. |
+| OverlayBehavior:MaintainerrCollectionsFilter | OVERLAYBEHAVIOR__MAINTAINERRCOLLECTIONSFILTER | [] (empty list) | List of Maintainerr collection titles to process. If empty, all active collections with 'DeleteAfterDays' set will be processed. Use to restrict overlays to specific collections by name. |
 | Schedule:Enabled          | SCHEDULE__ENABLED            | true                  | Enable scheduled overlay runs based on cron schedule. Otherwise Yamoh only works with cli arguments. |
 | Schedule:RunOnStart       | SCHEDULE__RUNONSTART         | false                 | FUTURE: Run overlay manager on app start. Run on app start, and on cron schedule afterwards |
 | Schedule:OverlayManagerCronSchedule | SCHEDULE__OVERLAYMANAGERCRONSCHEDULE | "30 * * * *" | Cron schedule for overlay manager.|
+| Logging:MinimumLevel:Default                    | LOGGING__MINIMUMLEVEL__DEFAULT                         | Information                  | Default minimum logging level.    |
 
-> Environment variable names use double underscores (`__`) to represent nested config keys.
+
+> [!Note]
+> 1. Environment variable names use double underscores (`__`) to represent nested config keys.
+>
+> 2. For array or list configuration values (e.g., `MaintainerrCollectionsFilter`), environment variables should be set as a comma-separated string. For example:
+>
+> `OVERLAYBEHAVIOR__MAINTAINERRCOLLECTIONSFILTER=Movies,Shows,My Custom Collection`
 
 ## Contributing
 Pull requests and issues are welcome! Please see `.github/ISSUE_TEMPLATE` for bug reports.

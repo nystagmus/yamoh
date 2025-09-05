@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using ImageMagick;
 using ImageMagick.Drawing;
+using Yamoh.Infrastructure.Configuration;
 
 namespace Yamoh.Infrastructure.ImageProcessing;
 
@@ -79,9 +80,9 @@ public class OverlayGeometry
         {
             var x = this._settings.HorizontalAlign switch
             {
-                "right" => this._imageWidth - ScaledBackWidth - ScaledHorizontalOffset,
-                "center" => (this._imageWidth - ScaledBackWidth) / 2 + ScaledHorizontalOffset,
-                "left" => ScaledHorizontalOffset,
+                HorizontalAlignment.Right => this._imageWidth - ScaledBackWidth - ScaledHorizontalOffset,
+                HorizontalAlignment.Center => (this._imageWidth - ScaledBackWidth) / 2 + ScaledHorizontalOffset,
+                HorizontalAlignment.Left => ScaledHorizontalOffset,
                 _ => this._imageWidth - ScaledBackWidth - ScaledHorizontalOffset
             };
             // always be visible
@@ -96,9 +97,9 @@ public class OverlayGeometry
         {
             var y = this._settings.VerticalAlign switch
             {
-                "bottom" => this._imageHeight - ScaledBackHeight - ScaledVerticalOffset,
-                "center" => (this._imageHeight - ScaledBackHeight) / 2 + ScaledVerticalOffset,
-                "top" => ScaledVerticalOffset,
+                VerticalAlignment.Bottom => this._imageHeight - ScaledBackHeight - ScaledVerticalOffset,
+                VerticalAlignment.Center => (this._imageHeight - ScaledBackHeight) / 2 + ScaledVerticalOffset,
+                VerticalAlignment.Top => ScaledVerticalOffset,
                 _ => this._imageHeight - ScaledBackHeight - ScaledVerticalOffset
             };
             // always be visible

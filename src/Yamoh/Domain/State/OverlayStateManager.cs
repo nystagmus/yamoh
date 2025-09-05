@@ -40,7 +40,7 @@ namespace Yamoh.Domain.State
             return this._collection.Find(x => x.OverlayApplied);
         }
 
-        public IEnumerable<OverlayStateItem> GetPendingRestores(IEnumerable<int> currentPlexIds)
+        public IEnumerable<OverlayStateItem> GetNeedsRestoresMissingFromList(IEnumerable<int> currentPlexIds)
         {
             currentPlexIds = currentPlexIds.ToList();
             // Items that have overlays applied but are no longer in Maintainerr

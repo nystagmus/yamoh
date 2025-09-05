@@ -9,15 +9,18 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
+using Serilog.Settings.Configuration;
 using Serilog.Sinks.Spectre;
 using Spectre.Console;
 using Yamoh.Domain.State;
 using Yamoh.Features.OverlayManager;
 using Yamoh.Infrastructure;
 using Yamoh.Infrastructure.Configuration;
+using Yamoh.Infrastructure.Configuration.Validation;
 using Yamoh.Infrastructure.EnvironmentUtility;
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.External;
+using Yamoh.Infrastructure.FileProcessing;
 using Yamoh.Infrastructure.ImageProcessing;
 using Yamoh.Infrastructure.Scheduling;
 using Yamoh.Ui;
@@ -29,9 +32,7 @@ if (AppEnvironment.IsDocker)
 }
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+    .MinimumLevel.Debug()
     .WriteTo.Spectre(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File(Path.Combine(AppEnvironment.LogFolder, "yamoh.log"), rollingInterval: RollingInterval.Day)
     .CreateLogger();
@@ -44,9 +45,12 @@ initializer.Initialize();
 
 if (!initializer.CheckPermissions())
 {
-    Log.Information("Access not permitted to configuration directory {AppEnvironmentConfigFolder}. Check your configuration", AppEnvironment.ConfigFolder);
+    Log.Information(
+        "Access not permitted to configuration directory {AppEnvironmentConfigFolder}. Check your configuration",
+        AppEnvironment.ConfigFolder);
     Environment.Exit(1);
 }
+
 initializer.CopyDefaultsIfMissing();
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -59,10 +63,34 @@ builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: 
 
 // Logging
 builder.Logging.ClearProviders();
-builder.Logging.AddSerilog(Log.Logger);
 
-builder.Services.Configure<YamohConfiguration>(builder.Configuration.GetSection(YamohConfiguration.Position));
-builder.Services.Configure<ScheduleOptions>(builder.Configuration.GetSection(ScheduleOptions.Position));
+// Rebuild serilog using configuration
+Log.CloseAndFlush();
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration, new ConfigurationReaderOptions { SectionName = "Logging" })
+    .Enrich.FromLogContext()
+    .WriteTo.Spectre()
+    .WriteTo.File(Path.Combine(AppEnvironment.LogFolder, "yamoh.log"), rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Logging.AddSerilog();
+
+builder.Services.AddOptions<YamohConfiguration>().Bind(builder.Configuration.GetSection(YamohConfiguration.Position))
+    .ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<YamohConfiguration>, YamohConfigurationValidation>();
+
+builder.Services.AddOptions<OverlayConfiguration>()
+    .Bind(builder.Configuration.GetSection(OverlayConfiguration.Position)).ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<OverlayConfiguration>, OverlayConfigurationValidation>();
+
+builder.Services.AddOptions<OverlayBehaviorConfiguration>()
+    .Bind(builder.Configuration.GetSection(OverlayBehaviorConfiguration.Position)).ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<ScheduleConfiguration>()
+    .Bind(builder.Configuration.GetSection(ScheduleConfiguration.Position)).ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<ScheduleConfiguration>, ScheduleConfigurationValidation>();
 
 // Services
 builder.Services.AddHttpClient();
@@ -70,6 +98,8 @@ builder.Services.AddTransient<CommandFactory>();
 builder.Services.AddTransient<MaintainerrClient>();
 builder.Services.AddTransient<PlexClient>();
 builder.Services.AddTransient<OverlayHelper>();
+builder.Services.AddTransient<AssetManager>();
+builder.Services.AddTransient<PlexMetadataBuilder>();
 builder.Services.AddSingleton<OverlayStateManager>();
 builder.Services.AddAllTypesOf<IYamohCommand>(Assembly.GetExecutingAssembly());
 
@@ -88,11 +118,11 @@ builder.Services.AddTransient<PlexAPI>(provider =>
 });
 
 // Scheduler
-var schedulerEnabled = builder.Configuration.GetSection(ScheduleOptions.Position).GetValue<bool>("Enabled");
+var schedulerEnabled = builder.Configuration.GetSection(ScheduleConfiguration.Position).GetValue<bool>("Enabled");
 
 if (schedulerEnabled)
 {
-    var overlayManagerCronSchedule = builder.Configuration.GetSection(ScheduleOptions.Position)
+    var overlayManagerCronSchedule = builder.Configuration.GetSection(ScheduleConfiguration.Position)
         .GetValue<string>("OverlayManagerCronSchedule");
 
     if (overlayManagerCronSchedule != null)
@@ -102,27 +132,39 @@ if (schedulerEnabled)
 
 builder.Services.AddHostedService<CronScheduler>();
 
-Log.Information("Looking good, starting up!");
+Log.Information("Starting up!");
 var host = builder.Build();
 
 ServiceLocator.SetServiceProvider(host.Services);
 
-// Validate and print configuration
+// Print configuration
 SpectreConsoleHelper.PrintSplashScreen();
-
-var config = host.Services.GetRequiredService<IOptions<YamohConfiguration>>().Value;
 
 try
 {
-    if (!config.AssertIsValid())
+    var configs = new List<object>
     {
-        Environment.Exit(1);
+        host.Services.GetRequiredService<IOptions<YamohConfiguration>>().Value,
+        host.Services.GetRequiredService<IOptions<OverlayConfiguration>>().Value,
+        host.Services.GetRequiredService<IOptions<OverlayBehaviorConfiguration>>().Value,
+        host.Services.GetRequiredService<IOptions<ScheduleConfiguration>>().Value
+    };
+
+    var configurationPanel = configs.PrintObjectPropertyValues();
+    AnsiConsole.Write(configurationPanel);
+}
+catch (OptionsValidationException ex)
+{
+    foreach (var validationFailure in ex.Failures)
+    {
+        Log.Logger.Error(ex, "Configuration validation error: {ValidationFailure}", validationFailure);
     }
-    config.PrintConfigTable();
+
+    return 0;
 }
 catch (Exception ex)
 {
-    AnsiConsole.MarkupLine($"[red]Configuration error: {ex.Message}[/]");
+    Log.Logger.Error(ex, "Unhandled exception when reading from configuration");
     return 0;
 }
 
@@ -138,7 +180,7 @@ foreach (var command in cliBuilder.GenerateCommandTree())
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     using var scope = host.Services.CreateScope();
-    var scheduleOptions = scope.ServiceProvider.GetRequiredService<IOptions<ScheduleOptions>>().Value;
+    var scheduleOptions = scope.ServiceProvider.GetRequiredService<IOptions<ScheduleConfiguration>>().Value;
 
     if (scheduleOptions.Enabled)
     {
@@ -189,7 +231,7 @@ return await parseResult.InvokeAsync();
 
 public partial class Program
 {
-    public static AppEnvironment AppEnvironment {get;} = new();
+    public static AppEnvironment AppEnvironment { get; } = new();
 }
 
 public static class ServiceLocator

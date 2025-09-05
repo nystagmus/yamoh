@@ -1,4 +1,5 @@
 using ImageMagick;
+using Yamoh.Infrastructure.Configuration;
 using Yamoh.Infrastructure.ImageProcessing;
 
 namespace Yamoh.Tests;
@@ -20,7 +21,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s =>
         {
-            s.HorizontalAlign = "right";
+            s.HorizontalAlign = HorizontalAlignment.Right;
             s.BackWidth = 100;
             s.HorizontalOffset = 10;
         });
@@ -37,7 +38,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s =>
         {
-            s.VerticalAlign = "top";
+            s.VerticalAlign = VerticalAlignment.Top;
             s.BackHeight = 50;
             s.VerticalOffset = 5;
         });
@@ -93,10 +94,10 @@ public class OverlayGeometryTests : TestsBase
     }
 
     [Theory]
-    [InlineData("left", 10)]
-    [InlineData("center", null)] // will check for centering
-    [InlineData("right", null)] // will check for right alignment
-    public void X_AlignsCorrectly(string align, int? expectedLeft)
+    [InlineData(HorizontalAlignment.Left, 10)]
+    [InlineData(HorizontalAlignment.Center, null)] // will check for centering
+    [InlineData(HorizontalAlignment.Right, null)] // will check for right alignment
+    public void X_AlignsCorrectly(HorizontalAlignment align, int? expectedLeft)
     {
         var settings = GetAddOverlaySettings(s =>
         {
@@ -107,20 +108,24 @@ public class OverlayGeometryTests : TestsBase
         var image = new MagickImage(MagickColors.White, 1000, 500);
         var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
+        const int tolerance = 1;
+
         if (expectedLeft.HasValue)
             Assert.Equal(expectedLeft.Value, geometry.X);
-        else if (align == "center")
-            Assert.True(Math.Abs(geometry.X - ((1000 - geometry.ScaledBackWidth) / 2 + geometry.ScaledHorizontalOffset))
-                        < 1);
-        else if (align == "right")
-            Assert.True(Math.Abs(geometry.X - (1000 - geometry.ScaledBackWidth - geometry.ScaledHorizontalOffset)) < 1);
+        else if (align == HorizontalAlignment.Center)
+            Assert.True(Math.Abs(geometry.X
+                                 - ((1000 - (double)geometry.ScaledBackWidth) / 2 + geometry.ScaledHorizontalOffset))
+                        < tolerance);
+        else if (align == HorizontalAlignment.Right)
+            Assert.True(Math.Abs(geometry.X - (1000 - geometry.ScaledBackWidth - geometry.ScaledHorizontalOffset))
+                        < tolerance);
     }
 
     [Theory]
-    [InlineData("top", 5)]
-    [InlineData("center", null)]
-    [InlineData("bottom", null)]
-    public void Y_AlignsCorrectly(string align, int? expectedTop)
+    [InlineData(VerticalAlignment.Top, 5)]
+    [InlineData(VerticalAlignment.Center, null)]
+    [InlineData(VerticalAlignment.Bottom, null)]
+    public void Y_AlignsCorrectly(VerticalAlignment align, int? expectedTop)
     {
         var settings = GetAddOverlaySettings(s =>
         {
@@ -131,13 +136,17 @@ public class OverlayGeometryTests : TestsBase
         var image = new MagickImage(MagickColors.White, 1000, 500);
         var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
+        const int tolerance = 1;
+
         if (expectedTop.HasValue)
             Assert.Equal(expectedTop.Value, geometry.Y);
-        else if (align == "center")
-            Assert.True(Math.Abs(geometry.Y - ((500 - geometry.ScaledBackHeight) / 2 + geometry.ScaledVerticalOffset))
-                        < 1);
-        else if (align == "bottom")
-            Assert.True(Math.Abs(geometry.Y - (500 - geometry.ScaledBackHeight - geometry.ScaledVerticalOffset)) < 1);
+        else if (align == VerticalAlignment.Center)
+            Assert.True(Math.Abs(geometry.Y
+                                 - ((500 - (double)geometry.ScaledBackHeight) / 2 + geometry.ScaledVerticalOffset))
+                        < tolerance);
+        else if (align == VerticalAlignment.Bottom)
+            Assert.True(Math.Abs(geometry.Y - (500 - geometry.ScaledBackHeight - geometry.ScaledVerticalOffset))
+                        < tolerance);
     }
 
     [Fact]
@@ -145,7 +154,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s =>
         {
-            s.HorizontalAlign = "center";
+            s.HorizontalAlign = HorizontalAlignment.Center;
             s.BackWidth = 100;
         });
         var image = new MagickImage(MagickColors.White, 1000, 500);
@@ -158,7 +167,7 @@ public class OverlayGeometryTests : TestsBase
     {
         var settings = GetAddOverlaySettings(s =>
         {
-            s.VerticalAlign = "bottom";
+            s.VerticalAlign = VerticalAlignment.Bottom;
             s.BackHeight = 50;
             s.Padding = 10;
         });
@@ -179,7 +188,7 @@ public class OverlayGeometryTests : TestsBase
     [Fact]
     public void GetDebugGlyphs_ReturnsDrawables()
     {
-        var settings = GetAddOverlaySettings(s => { });
+        var settings = GetAddOverlaySettings(_ => { });
         var image = new MagickImage(MagickColors.White, 1000, 500);
         var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
         var glyphs = geometry.GetDebugGlyphs();

@@ -22,8 +22,10 @@
         <PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.10" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8"/>
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="9.0.8" />
         <PackageReference Include="Serilog" Version="4.3.0"/>
         <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0"/>
+        <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
         <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
         <PackageReference Include="Serilog.Sinks.Spectre" Version="0.5.0" />
         <PackageReference Include="Spectre.Console" Version="0.50.0"/>
