@@ -1,8 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Humanizer;
-using Humanizer.Configuration;
-using Humanizer.DateTimeHumanizeStrategy;
 using Humanizer.Localisation;
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.ImageProcessing;
@@ -74,8 +72,7 @@ public class OverlayConfiguration
                 return overlayText;
             }
             default:
-                // todo: better exception
-                throw new Exception("Unknown overlay text style");
+                throw new ArgumentOutOfRangeException(nameof(OverlayTextMode), OverlayTextMode, $"Unknown overlay text style: {OverlayTextMode}");
         }
     }
 }

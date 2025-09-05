@@ -32,7 +32,7 @@ public class AssetPathInfo
 
     public void UpdateExtension(FileInfo fileInfo)
     {
-        if (!string.IsNullOrEmpty(File.Extension) || FileName.EndsWith(BackupFileNameSuffix))
+        if (string.IsNullOrEmpty(File.Extension) || FileName.EndsWith(BackupFileNameSuffix))
         {
             FileName += fileInfo.Extension;
         }

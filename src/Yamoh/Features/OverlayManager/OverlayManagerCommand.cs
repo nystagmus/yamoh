@@ -66,6 +66,7 @@ public class OverlayManagerCommand(
                 logger.LogInformation("Manual termination requested..");
                 return;
             }
+
             if (!collection.IsActive)
             {
                 logger.LogInformation("Collection {CollectionName} is not an active collection in Maintainerr",
@@ -89,6 +90,7 @@ public class OverlayManagerCommand(
                     logger.LogInformation("Manual termination requested..");
                     return;
                 }
+
                 var state = overlayStateManager.GetByPlexId(item.PlexId);
 
                 state ??= new OverlayStateItem
@@ -103,7 +105,7 @@ public class OverlayManagerCommand(
                 state.ParentPlexId = item.ParentPlexId;
 
                 var overlayText = _overlayConfiguration.GetOverlayText(item.ExpirationDate);
-                var overlayTextChanged = !string.Equals(overlayText,state.OverlayText,StringComparison.Ordinal);
+                var overlayTextChanged = !string.Equals(overlayText, state.OverlayText, StringComparison.Ordinal);
 
                 try
                 {
@@ -229,7 +231,8 @@ public class OverlayManagerCommand(
 
         foreach (var missing in missingFilters)
         {
-            logger.LogWarning("Maintainerr Collections Filter entry {Missing} does not exist in Maintainerr collections",
+            logger.LogWarning(
+                "Maintainerr Collections Filter entry {Missing} does not exist in Maintainerr collections",
                 missing.Original);
         }
 
