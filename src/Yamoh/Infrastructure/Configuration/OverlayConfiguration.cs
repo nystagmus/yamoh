@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using Serilog;
+using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.ImageProcessing;
 
 namespace Yamoh.Infrastructure.Configuration;
@@ -40,4 +42,14 @@ public class OverlayConfiguration
     public bool EnableDaySuffix { get; init; } = true;
     public bool EnableUppercase { get; init; } = true;
     public string Language { get; init; } = "en-US";
+
+    public string GetOverlayText(DateTimeOffset expirationDate)
+    {
+        var culture = new CultureInfo(Language);
+        var formattedDate = expirationDate.ToString(DateFormat, culture);
+        var overlayText = $"{OverlayText} {formattedDate}";
+        if (EnableDaySuffix) overlayText += expirationDate.GetDaySuffix();
+        if (EnableUppercase) overlayText = overlayText.ToUpper();
+        return overlayText;
+    }
 }

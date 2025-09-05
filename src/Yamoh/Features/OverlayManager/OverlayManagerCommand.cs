@@ -137,7 +137,7 @@ public class OverlayManagerCommand(
                         state.KometaLabelExists = item.KometaLabelExists;
 
                         // Apply overlay
-                        var overlayText = GetOverlayText(item);
+                        var overlayText = _overlayConfiguration.GetOverlayText(item.ExpirationDate);
 
                         var result =
                             overlayHelper.AddOverlay(item.PlexId, asset.FileName, overlayText, overlaySettings);
@@ -302,15 +302,5 @@ public class OverlayManagerCommand(
             item.PlexId, item.FriendlyTitle);
 
         return false;
-    }
-
-    private string GetOverlayText(PlexMetadataBuilderItem item)
-    {
-        var culture = new CultureInfo(_overlayConfiguration.Language);
-        var formattedDate = item.ExpirationDate.ToString(_overlayConfiguration.DateFormat, culture);
-        var overlayText = $"{_overlayConfiguration.OverlayText} {formattedDate}";
-        if (_overlayConfiguration.EnableDaySuffix) overlayText += item.ExpirationDate.GetDaySuffix();
-        if (_overlayConfiguration.EnableUppercase) overlayText = overlayText.ToUpper();
-        return overlayText;
     }
 }
