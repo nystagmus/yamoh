@@ -1,4 +1,4 @@
-﻿FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
+﻿FROM mcr.microsoft.com/dotnet/runtime:9.0 AS base
 ARG PUID=0
 ARG PGID=0
 ENV PUID=$PUID
@@ -8,7 +8,7 @@ RUN groupadd -g $PGID appgroup && useradd -u $PUID -g appgroup -s /bin/bash appu
 USER appuser
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/Yamoh/Yamoh.csproj", "Yamoh/"]
