@@ -108,13 +108,17 @@ public class OverlayGeometryTests : TestsBase
         var image = new MagickImage(MagickColors.White, 1000, 500);
         var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
+        const int tolerance = 1;
+
         if (expectedLeft.HasValue)
             Assert.Equal(expectedLeft.Value, geometry.X);
         else if (align == HorizontalAlignment.Center)
-            Assert.True(Math.Abs(geometry.X - ((1000 - (double)geometry.ScaledBackWidth) / 2 + geometry.ScaledHorizontalOffset))
-                        < 1);
+            Assert.True(Math.Abs(geometry.X
+                                 - ((1000 - (double)geometry.ScaledBackWidth) / 2 + geometry.ScaledHorizontalOffset))
+                        < tolerance);
         else if (align == HorizontalAlignment.Right)
-            Assert.True(Math.Abs(geometry.X - (1000 - geometry.ScaledBackWidth - geometry.ScaledHorizontalOffset)) < 1);
+            Assert.True(Math.Abs(geometry.X - (1000 - geometry.ScaledBackWidth - geometry.ScaledHorizontalOffset))
+                        < tolerance);
     }
 
     [Theory]
@@ -132,13 +136,17 @@ public class OverlayGeometryTests : TestsBase
         var image = new MagickImage(MagickColors.White, 1000, 500);
         var geometry = new OverlayGeometry("Test", image, ArialPath, settings);
 
+        const int tolerance = 1;
+
         if (expectedTop.HasValue)
             Assert.Equal(expectedTop.Value, geometry.Y);
         else if (align == VerticalAlignment.Center)
-            Assert.True(Math.Abs(geometry.Y - ((500 - (double)geometry.ScaledBackHeight) / 2 + geometry.ScaledVerticalOffset))
-                        < 1);
+            Assert.True(Math.Abs(geometry.Y
+                                 - ((500 - (double)geometry.ScaledBackHeight) / 2 + geometry.ScaledVerticalOffset))
+                        < tolerance);
         else if (align == VerticalAlignment.Bottom)
-            Assert.True(Math.Abs(geometry.Y - (500 - geometry.ScaledBackHeight - geometry.ScaledVerticalOffset)) < 1);
+            Assert.True(Math.Abs(geometry.Y - (500 - geometry.ScaledBackHeight - geometry.ScaledVerticalOffset))
+                        < tolerance);
     }
 
     [Fact]

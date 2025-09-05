@@ -11,16 +11,11 @@ public class OverlayConfiguration
     public static string Position => "Overlay";
 
     public string FontName { get; init; } = "AvenirNextLTPro-Bold";
-
-    [RegularExpression(@"^(\#(?:[0-9a-fA-F]{3,4}){1,2}|rgba?\([^)]+\)|hsla?\([^)]+\)|[a-z]+)$",
-        ErrorMessage = "Value for {0} must be a valid ImageMagick color expression.")]
     public string FontColor { get; init; } = "#FFFFFF";
 
     [Range(0.0, 1.0, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
     public double FontTransparency { get; init; } = 1.00;
 
-    [RegularExpression(@"^(\#(?:[0-9a-fA-F]{3,4}){1,2}|rgba?\([^)]+\)|hsla?\([^)]+\)|[a-z]+)$",
-        ErrorMessage = "Value for {0} must be a valid ImageMagick color expression.")]
     public string BackColor { get; init; } = "#B20710";
 
     [Range(0.0, 1.0, ErrorMessage = "Value for {0} must be between {1} and {2}.")]

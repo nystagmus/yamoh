@@ -26,7 +26,7 @@ public class OverlayTestImageCommand(
         const int width = 1000;
         const int height = 1500;
 
-        var dateString = DateTime.Now.ToString("yyyyddMHHmmss");
+        var dateString = DateTime.Now.ToString("yyyyMMddHHmmss");
 
         for (var i = 0; i < 10; i++)
         {

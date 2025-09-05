@@ -285,7 +285,7 @@ public class PlexMetadataBuilder(
                 var libraryInfo = await GetPlexItemLibraryInfoAsync(plexMeta, showPath);
                 if (libraryInfo == null) return new List<PlexMetadataBuilderItem>();
 
-                var seasonIndex = plexMeta.Metadata[0].ParentIndex.ToString()?.PadLeft(2, '0');
+                var seasonIndex = plexMeta.Metadata[0].ParentIndex?.ToString().PadLeft(2, '0') ?? "00";
                 var episodeIndex = plexMeta.Metadata[0].Index.ToString().PadLeft(2, '0');
                 var episodeFileNameFormat = $"S{seasonIndex}E{episodeIndex}";
 

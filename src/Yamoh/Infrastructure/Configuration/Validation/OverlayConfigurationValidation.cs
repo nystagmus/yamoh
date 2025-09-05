@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -13,25 +14,51 @@ public class OverlayConfigurationValidation(IConfiguration config) : IValidateOp
     {
         if (this._config == null)
         {
-            return ValidateOptionsResult.Fail("Overlay configuration is missing. \n");
+            return ValidateOptionsResult.Fail("Overlay configuration is missing." + Environment.NewLine);
         }
 
-        string? validationMessage = null;
+        List<string> validationFailures = [];
 
         if (!IsValidDateFormat(options.DateFormat))
         {
-            validationMessage =
-                $"{nameof(options.DateFormat)} string '{options.DateFormat}' is not a valid date-format string. \n";
+            validationFailures.Add(
+                $"{nameof(options.DateFormat)} string '{options.DateFormat}' is not a valid date-format string.");
         }
 
         if (!IsValidCultureString(options.Language))
         {
-            validationMessage += $"{nameof(options.Language)} string '{options.Language}' is not a valid language-code. \n";
+            validationFailures.Add(
+                $"{nameof(options.Language)} string '{options.Language}' is not a valid language-code.");
         }
 
-        return validationMessage != null
-            ? ValidateOptionsResult.Fail(validationMessage)
+        if (!IsValidImageMagickColorString(options.FontColor))
+        {
+            validationFailures.Add(
+                $"{nameof(options.FontColor)} string '{options.FontColor}' is not a valid ImageMagick color string.");
+        }
+
+        if (!IsValidImageMagickColorString(options.BackColor))
+        {
+            validationFailures.Add(
+                $"{nameof(options.BackColor)} string '{options.BackColor}' is not a valid ImageMagick color string.");
+        }
+
+        return validationFailures.Count > 0
+            ? ValidateOptionsResult.Fail(validationFailures)
             : ValidateOptionsResult.Success;
+    }
+
+    private bool IsValidImageMagickColorString(string colorString)
+    {
+        try
+        {
+            var test = new ImageMagick.MagickColor(colorString);
+            return true;
+        }
+        catch (ArgumentException _)
+        {
+            return false;
+        }
     }
 
     private bool IsValidCultureString(string cultureName)
@@ -59,6 +86,7 @@ public class OverlayConfigurationValidation(IConfiguration config) : IValidateOp
         {
             return false;
         }
+
         return true;
     }
 }

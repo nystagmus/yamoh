@@ -42,15 +42,17 @@ public class YamohConfigurationValidation(IConfiguration config) : IValidateOpti
         catch (Exception ex)
         {
             Log.Error(ex, "Exception encountered when parsing {YamohConfiguration} configuration", nameof(YamohConfiguration));
-            return ValidateOptionsResult.Fail($"Error encountered while validating {nameof(YamohConfiguration)}." + Environment.NewLine);
+            return ValidateOptionsResult.Fail($"Error encountered while validating {nameof(YamohConfiguration)}.");
         }
 
         if (errors.Count == 0)
         {
             return ValidateOptionsResult.Success;
         }
-        var validationMessage = errors.Aggregate(string.Empty, (current, error) => current + (error.Issue + Environment.NewLine));
-        return ValidateOptionsResult.Fail(validationMessage);
+
+        var validationErrors = errors.Select(error => error.Issue).ToList();
+
+        return ValidateOptionsResult.Fail(validationErrors);
     }
 
     private static void ValidateUrl(string url, string propertyName, List<YamohConfigurationError> errors)

@@ -148,8 +148,8 @@ catch (OptionsValidationException ex)
     foreach (var validationFailure in ex.Failures)
     {
         Log.Logger.Error(ex, "Configuration validation error: {ValidationFailure}", validationFailure);
-        return 0;
     }
+    return 0;
 }
 catch (Exception ex)
 {
