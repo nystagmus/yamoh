@@ -1,7 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using ImageMagick;
 using ImageMagick.Drawing;
-using Yamoh.Infrastructure.Configuration;
 
 namespace Yamoh.Infrastructure.ImageProcessing;
 

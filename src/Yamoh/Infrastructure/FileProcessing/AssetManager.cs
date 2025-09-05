@@ -1,12 +1,11 @@
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.External;
+using static Yamoh.Infrastructure.FileProcessing.AssetConstants;
 
 namespace Yamoh.Infrastructure.FileProcessing;
 
 public class AssetManager(PlexClient plexClient)
 {
-    private const string BackupFileNameSuffix = ".original";
-
     public static bool TryBackupPoster(string sourcePath, string backupPath)
     {
         if (File.Exists(backupPath))
@@ -30,47 +29,56 @@ public class AssetManager(PlexClient plexClient)
         return true;
     }
 
-    public async Task<FileInfo?> GetAndBackupOriginalPoster(AssetPathInfo backupAsset, AssetPathInfo asset,
+    public async Task<AssetPathInfo?> GetAndBackupOriginalPoster(DirectoryInfo backupAssetPath, AssetPathInfo asset,
         string mediaFileName, string originalPlexPosterUrl)
     {
-        // Will get poster.original.jpg first, else poster.jpg if exists, or null
+        // 1. Look for a poster.jpg in the asset directory if exists
+        // 2. Look for a backup if it doesnt exist
+        // 3. If neither exist download a new one from Plex and save it to asset path
+        // 4. Return the backup path - we'll always be working with the backup (but not overwriting it).
+
         var originalPoster =
-            GetOriginalPoster(backupAsset, asset, mediaFileName);
-        var originalPosterBackupFullName = backupAsset.File.FullName + BackupFileNameSuffix;
+            GetOriginalPoster(backupAssetPath, asset, mediaFileName);
+
+        var backupAssetFileName = asset.File.Name + BackupFileNameSuffix;
+        var originalPosterBackupAsset = new AssetPathInfo(backupAssetPath.FullName, backupAssetFileName);
 
         if (originalPoster is { Exists: true })
         {
-            originalPosterBackupFullName = Path.ChangeExtension(originalPosterBackupFullName, originalPoster.Extension);
+            originalPosterBackupAsset.UpdateExtension(originalPoster);
 
-            if (!File.Exists(originalPosterBackupFullName))
-                File.Copy(originalPoster.FullName, originalPosterBackupFullName, overwrite: true);
-
-            return new FileInfo(originalPosterBackupFullName);
+            if (!originalPosterBackupAsset.File.Exists)
+            {
+                originalPoster.CopyTo(originalPosterBackupAsset.File.FullName, overwrite: true);
+            }
         }
-
-        // download original poster from plex instead
-        var plexPoster = await plexClient.DownloadPlexImageAsync(originalPlexPosterUrl);
-
-        if (plexPoster is not { Exists: true } || !plexPoster.IsImageByExtension())
+        else
         {
-            return null;
+            // download original poster from plex instead
+            var plexPoster = await plexClient.DownloadPlexImageAsync(originalPlexPosterUrl);
+
+            if (plexPoster is not { Exists: true } || !plexPoster.IsImageByExtension())
+            {
+                return null;
+            }
+
+            var mediaFileFullName = new AssetPathInfo(asset);
+            mediaFileFullName.UpdateExtension(plexPoster);
+            originalPosterBackupAsset.UpdateExtension(plexPoster);
+
+            plexPoster.CopyTo(mediaFileFullName.File.FullName, overwrite: true);
+            plexPoster.CopyTo(originalPosterBackupAsset.File.FullName, overwrite: true);
+            plexPoster.Delete();
         }
 
-        var mediaFileFullName = Path.ChangeExtension(asset.FileName, plexPoster.Extension);
-        originalPosterBackupFullName = Path.ChangeExtension(originalPosterBackupFullName, plexPoster.Extension);
-
-        File.Copy(plexPoster.FullName, mediaFileFullName, overwrite: true);
-        File.Copy(plexPoster.FullName, originalPosterBackupFullName, overwrite: true);
-        File.Delete(plexPoster.FullName);
-
-        return new FileInfo(originalPosterBackupFullName);
+        return originalPosterBackupAsset;
     }
 
-    private static FileInfo? GetOriginalPoster(AssetPathInfo backupAsset, AssetPathInfo asset,
+    private static FileInfo? GetOriginalPoster(DirectoryInfo backupAssetPath, AssetPathInfo asset,
         string mediaFileName)
     {
         // check for backup first - if exists it should be the best copy
-        var backupFileList = backupAsset.Directory?.GetFiles() ?? [];
+        var backupFileList = backupAssetPath.GetFiles();
 
         var backupMatches = backupFileList.Where(fileInfo =>
                 fileInfo.Exists &&
@@ -83,9 +91,10 @@ public class AssetManager(PlexClient plexClient)
 
         var backupOriginalPoster = backupMatches.FirstOrDefault(x => x.Name.Contains(BackupFileNameSuffix));
 
-        var matches = fileList.Where(fileInfo => fileInfo.Exists &&
-                                                 fileInfo.Name.StartsWith(mediaFileName) &&
-                                                 fileInfo.IsImageByExtension())
+        var matches = fileList.Where(fileInfo =>
+                fileInfo.Exists &&
+                fileInfo.Name.StartsWith(mediaFileName) &&
+                fileInfo.IsImageByExtension())
             .ToList();
         return backupOriginalPoster ?? matches.FirstOrDefault();
     }

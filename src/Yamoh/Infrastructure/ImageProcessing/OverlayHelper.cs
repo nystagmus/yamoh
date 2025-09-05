@@ -3,14 +3,15 @@ using ImageMagick.Drawing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Yamoh.Infrastructure.Configuration;
+using Yamoh.Infrastructure.FileProcessing;
 
 namespace Yamoh.Infrastructure.ImageProcessing;
 
 public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayHelper> logger)
 {
-    public FileInfo AddOverlay(
+    public AssetPathInfo AddOverlay(
         int plexId,
-        string imagePath,
+        AssetPathInfo sourceImage,
         string text,
         AddOverlaySettings settings
     )
@@ -20,7 +21,7 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             var cfg = config.Value;
 
             // Load Image
-            using var image = new MagickImage(imagePath);
+            using var image = new MagickImage(sourceImage.File.FullName);
 
             // Load font
             var fontFile = ValidateFontFile(settings, cfg);
@@ -76,12 +77,10 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             // var debugDrawables = geometry.GetDebugGlyphs();
             // debugDrawables.Draw(image);
 
-            var imagePathInfo = new FileInfo(imagePath);
             var tempPath = config.Value.TempImageFullPath;
-            var tempImagePath = Path.Combine(tempPath, $"{plexId}_temp.{imagePathInfo.Extension}");
+            var tempImagePath = Path.Combine(tempPath, $"{plexId}_temp{sourceImage.File.Extension}");
             image.Write(tempImagePath);
-
-            return new FileInfo(tempImagePath);
+            return new AssetPathInfo(new FileInfo(tempImagePath));
         }
         catch (Exception ex)
         {

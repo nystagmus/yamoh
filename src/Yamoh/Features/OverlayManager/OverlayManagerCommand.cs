@@ -61,6 +61,11 @@ public class OverlayManagerCommand(
         // For each collection, process overlays and update state
         foreach (var collection in collections)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                logger.LogInformation("Manual termination requested..");
+                return;
+            }
             if (!collection.IsActive)
             {
                 logger.LogInformation("Collection {CollectionName} is not an active collection in Maintainerr",
@@ -79,6 +84,11 @@ public class OverlayManagerCommand(
 
             foreach (var item in items)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogInformation("Manual termination requested..");
+                    return;
+                }
                 var state = overlayStateManager.GetByPlexId(item.PlexId);
 
                 state ??= new OverlayStateItem
@@ -92,12 +102,13 @@ public class OverlayManagerCommand(
                 state.IsChild = item.IsChild;
                 state.ParentPlexId = item.ParentPlexId;
 
-                var expirationDateChanged = state.LastKnownExpirationDate.Date != item.ExpirationDate.Date;
+                var overlayText = _overlayConfiguration.GetOverlayText(item.ExpirationDate);
+                var overlayTextChanged = !string.Equals(overlayText,state.OverlayText,StringComparison.Ordinal);
 
                 try
                 {
                     if (_overlayBehaviorConfiguration.ReapplyOverlays ||
-                        expirationDateChanged ||
+                        overlayTextChanged ||
                         state is not { OverlayApplied: true })
                     {
                         state.MaintainerrCollectionId = collection.Id;
@@ -114,37 +125,37 @@ public class OverlayManagerCommand(
                             continue;
                         }
 
-                        var backupAsset = new AssetPathInfo(backupAssetBasePath, item);
+                        var backupAssetPath = new AssetPathInfo(backupAssetBasePath, item).Directory;
 
-                        if (backupAsset.Directory == null || !backupAsset.Directory.TryCreate())
+                        if (backupAssetPath == null || !backupAssetPath.TryCreate())
                         {
                             logger.LogInformation("Failed to create backup file directory. Path: {Path}",
-                                backupAsset.FilePath);
+                                backupAssetPath?.FullName);
                             skippedBecauseOfError++;
                             continue;
                         }
 
-                        var originalPosterBackup = Guard.Against.Null(await assetManager.GetAndBackupOriginalPoster(
-                                backupAsset, asset,
+                        var workAsset = Guard.Against.Null(await assetManager.GetAndBackupOriginalPoster(
+                                backupAssetPath, asset,
                                 item.MediaFileName, item.OriginalPlexPosterUrl),
                             message:
                             $"Could not find or fetch original poster for {item.PlexId} - {item.FriendlyTitle}");
 
-                        asset.UpdateExtension(originalPosterBackup);
+                        asset.UpdateExtension(workAsset.File);
 
                         state.PosterPath = asset.FileName;
-                        state.OriginalPosterPath = originalPosterBackup.FullName;
+                        state.OriginalPosterPath = workAsset.File.FullName;
                         state.KometaLabelExists = item.KometaLabelExists;
 
                         // Apply overlay
-                        var overlayText = _overlayConfiguration.GetOverlayText(item.ExpirationDate);
 
                         var result =
-                            overlayHelper.AddOverlay(item.PlexId, asset.FileName, overlayText, overlaySettings);
+                            overlayHelper.AddOverlay(item.PlexId, workAsset, overlayText, overlaySettings);
 
-                        File.Copy(result.FullName, asset.FileName, overwrite: true);
-                        File.Delete(result.FullName);
+                        result.File.CopyTo(asset.FileName, overwrite: true);
+                        result.File.Delete();
                         state.OverlayApplied = true;
+                        state.OverlayText = overlayText;
                         state.PosterHash = null;
 
                         if (item.KometaLabelExists)

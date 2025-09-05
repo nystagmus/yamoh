@@ -1,5 +1,6 @@
 ﻿using LiteDB;
 using Yamoh.Domain.Maintainerr;
+using Yamoh.Infrastructure.Configuration;
 
 namespace Yamoh.Domain.State
 {
@@ -20,6 +21,7 @@ namespace Yamoh.Domain.State
         public bool KometaLabelExists { get; set; }
         public int LibrarySectionId { get; set; }
         public MaintainerrPlexDataType MaintainerrPlexType { get; set; }
+        public string OverlayText { get; set; } = string.Empty;
     }
 }
 

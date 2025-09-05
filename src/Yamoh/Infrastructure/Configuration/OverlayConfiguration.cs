@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
-using Serilog;
+using Humanizer;
+using Humanizer.Configuration;
+using Humanizer.DateTimeHumanizeStrategy;
+using Humanizer.Localisation;
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.ImageProcessing;
 
@@ -32,19 +35,47 @@ public class OverlayConfiguration
     public VerticalAlignment VerticalAlign { get; init; } = VerticalAlignment.Bottom;
     public uint BackWidth { get; init; } = 1920;
     public uint BackHeight { get; init; } = 100;
-    public string DateFormat { get; init; } = "MMM d";
+    public OverlayTextMode OverlayTextMode { get; init; } = OverlayTextMode.Date;
     public string OverlayText { get; init; } = "Leaving";
-    public bool EnableDaySuffix { get; init; } = true;
     public bool EnableUppercase { get; init; } = true;
     public string Language { get; init; } = "en-US";
+    public string DateFormat { get; init; } = "MMM d";
+    public bool DateEnableDaySuffix { get; init; } = true;
+    public TimeUnit DaysLeftMinUnit { get; init; } = TimeUnit.Day;
+    public TimeUnit DaysLeftMaxUnit { get; init; } = TimeUnit.Week;
+    public int DaysLeftPrecision { get; init; } = 1;
 
     public string GetOverlayText(DateTimeOffset expirationDate)
     {
-        var culture = new CultureInfo(Language);
-        var formattedDate = expirationDate.ToString(DateFormat, culture);
-        var overlayText = $"{OverlayText} {formattedDate}";
-        if (EnableDaySuffix) overlayText += expirationDate.GetDaySuffix();
-        if (EnableUppercase) overlayText = overlayText.ToUpper();
-        return overlayText;
+        switch (OverlayTextMode)
+        {
+            case OverlayTextMode.DaysLeft:
+            {
+                var culture = new CultureInfo(Language);
+                var now = DateTimeOffset.UtcNow;
+                var daysLeft = expirationDate.Date - now.Date;
+
+                var humanizedDaysLeft = daysLeft.Humanize(precision: DaysLeftPrecision,
+                    maxUnit: DaysLeftMaxUnit,
+                    minUnit: DaysLeftMinUnit,
+                    culture: culture);
+
+                var overlayText = string.Join(' ', OverlayText, humanizedDaysLeft);
+                if (EnableUppercase) overlayText = overlayText.ToUpper();
+                return overlayText;
+            }
+            case OverlayTextMode.Date:
+            {
+                var culture = new CultureInfo(Language);
+                var formattedDate = expirationDate.ToString(DateFormat, culture);
+                var overlayText = string.Join(' ', OverlayText, formattedDate);
+                if (DateEnableDaySuffix) overlayText += expirationDate.GetDaySuffix();
+                if (EnableUppercase) overlayText = overlayText.ToUpper();
+                return overlayText;
+            }
+            default:
+                // todo: better exception
+                throw new Exception("Unknown overlay text style");
+        }
     }
 }
