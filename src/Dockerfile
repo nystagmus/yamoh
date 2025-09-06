@@ -1,11 +1,5 @@
 ﻿FROM mcr.microsoft.com/dotnet/runtime:9.0 AS base
-ARG PUID=99
-ARG PGID=100
-ENV PUID=$PUID
-ENV PGID=$PGID
-RUN groupadd -g $PGID appgroup && useradd -u $PUID -g appgroup -s /bin/bash appuser
 
-USER appuser
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
@@ -26,4 +20,10 @@ RUN dotnet publish "./Yamoh.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:U
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Yamoh.dll"]
+COPY src/entrypoint.sh /entrypoint.sh
+
+RUN apt-get update && apt-get install -y gosu && rm -rf /var/lib/apt/lists/*
+
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
