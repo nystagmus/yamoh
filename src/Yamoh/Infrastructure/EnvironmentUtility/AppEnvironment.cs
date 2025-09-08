@@ -9,11 +9,9 @@ public class AppEnvironment
     public string LogFolder { get; }
     public string StateFolder { get; }
     public bool IsDocker { get; }
-    public string OsName { get; }
 
     public AppEnvironment()
     {
-        OsName = GetOsName();
         IsDocker = DetectDocker();
 
         if (IsDocker)
@@ -31,14 +29,6 @@ public class AppEnvironment
         DefaultsFolder = Path.Combine(AppContext.BaseDirectory, "Defaults");
     }
 
-    private string GetOsName()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "Windows";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "OSX";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "Linux";
-        return "Unknown";
-    }
-
     private bool DetectDocker()
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return false;
@@ -47,7 +37,7 @@ public class AppEnvironment
                (File.Exists("/proc/1/cgroup") && File.ReadAllText("/proc/1/cgroup").Contains("/docker/"));
     }
 
-    private string GetBaseAppDataFolder()
+    private static string GetBaseAppDataFolder()
     {
         var basePath = Environment.GetFolderPath(
             RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
