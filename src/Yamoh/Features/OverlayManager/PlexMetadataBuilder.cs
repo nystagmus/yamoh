@@ -32,19 +32,28 @@ public class PlexMetadataBuilder(
             .Select(x => new MaintainerrMediaDto(x.PlexId, x.AddDate))
             .ToList();
 
-        var items = collection.Type switch
+        try
         {
-            (int)MaintainerrPlexDataType.Movies => await GatherMovieCollectionItems(collection.Title,
-                collection.DeleteAfterDays, maintainerrMedia),
-            (int)MaintainerrPlexDataType.Shows => await GatherShowCollectionItems(collection.Title,
-                collection.DeleteAfterDays, maintainerrMedia),
-            (int)MaintainerrPlexDataType.Seasons => await GatherSeasonCollectionItems(collection.Title,
-                collection.DeleteAfterDays, maintainerrMedia),
-            (int)MaintainerrPlexDataType.Episodes => await GatherEpisodeCollectionItems(collection.Title,
-                collection.DeleteAfterDays, maintainerrMedia),
-            _ => []
-        };
-        return items;
+            var items = collection.Type switch
+            {
+                (int)MaintainerrPlexDataType.Movies => await GatherMovieCollectionItems(collection.Title,
+                    collection.DeleteAfterDays, maintainerrMedia),
+                (int)MaintainerrPlexDataType.Shows => await GatherShowCollectionItems(collection.Title,
+                    collection.DeleteAfterDays, maintainerrMedia),
+                (int)MaintainerrPlexDataType.Seasons => await GatherSeasonCollectionItems(collection.Title,
+                    collection.DeleteAfterDays, maintainerrMedia),
+                (int)MaintainerrPlexDataType.Episodes => await GatherEpisodeCollectionItems(collection.Title,
+                    collection.DeleteAfterDays, maintainerrMedia),
+                _ => []
+            };
+            return items;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Exception encountered when attempting to hydrate metadata for {CollectionName}", collection.Title);
+        }
+
+        return new List<PlexMetadataBuilderItem>();
     }
 
     private async Task<IEnumerable<PlexMetadataBuilderItem>> GatherMovieCollectionItems(string? collectionTitle,

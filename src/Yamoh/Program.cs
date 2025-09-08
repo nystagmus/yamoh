@@ -8,7 +8,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
-using Serilog.Events;
 using Serilog.Settings.Configuration;
 using Serilog.Sinks.Spectre;
 using Spectre.Console;
@@ -43,11 +42,17 @@ Log.Information("Starting pre-build configuration..");
 var initializer = new AppFolderInitializer(AppEnvironment);
 initializer.Initialize();
 
-if (!initializer.CheckPermissions())
+var folderPermissionErrors = initializer.CheckRequiredFolderPermissions();
+
+if (folderPermissionErrors.Count != 0)
 {
-    Log.Information(
-        "Access not permitted to configuration directory {AppEnvironmentConfigFolder}. Check your configuration",
-        AppEnvironment.ConfigFolder);
+    foreach (var error in folderPermissionErrors)
+    {
+        Log.Information(
+            "Access not permitted to directory {Folder}. Check your configuration. Exception: {Ex}",
+            error.Path, error.Message);
+    }
+
     Environment.Exit(1);
 }
 
