@@ -1,9 +1,13 @@
-﻿using Serilog;
+﻿using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using Serilog;
 
 namespace Yamoh.Infrastructure.EnvironmentUtility;
 
 public class AppFolderInitializer(AppEnvironment env)
 {
+    public record PermissionCheckFailureResult(string Path, string Message);
+
     public void Initialize()
     {
         Directory.CreateDirectory(env.ConfigFolder);
@@ -11,31 +15,40 @@ public class AppFolderInitializer(AppEnvironment env)
         Directory.CreateDirectory(env.StateFolder);
     }
 
-    public bool CheckPermissions()
+    public List<PermissionCheckFailureResult> CheckRequiredFolderPermissions()
     {
-        try
-        {
-            Log.Debug("Checking Directory permissions...");
-            var testFile = Path.Combine(env.ConfigFolder, "permission_test.tmp");
-            File.WriteAllText(testFile, "test");
-            File.Delete(testFile);
+        Log.Debug("Checking Directory permissions...");
+        var results = new List<PermissionCheckFailureResult>();
 
-            // Test read
-            var files = Directory.GetFiles(env.ConfigFolder);
-            return true;
-        }
-        catch
+        foreach (var folder in env.Folders)
         {
-            return false;
+            try
+            {
+                // Test read
+                var files = Directory.GetFiles(folder);
+
+                // Test write
+                var testFile = Path.Combine(folder, "permission_test.tmp");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+            }
+            catch (Exception ex)
+            {
+                results.Add(new PermissionCheckFailureResult(folder, ex.Message));
+            }
         }
+
+        return results;
     }
 
     public void CopyDefaultsIfMissing()
     {
         Log.Debug("Creating default configuration (if missing)...");
+
         foreach (var file in Directory.GetFiles(env.DefaultsFolder))
         {
             var destFile = Path.Combine(env.ConfigFolder, Path.GetFileName(file));
+
             if (!File.Exists(destFile))
             {
                 File.Copy(file, destFile);
@@ -45,6 +58,7 @@ public class AppFolderInitializer(AppEnvironment env)
         foreach (var dir in Directory.GetDirectories(env.DefaultsFolder))
         {
             var destDir = Path.Combine(env.ConfigFolder, Path.GetFileName(dir));
+
             if (!Directory.Exists(destDir))
             {
                 DirectoryCopy(dir, destDir, true);
