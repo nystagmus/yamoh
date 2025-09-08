@@ -44,10 +44,13 @@ public class OverlayManagerCommand(
         // Restore only option
         if (await RestoreOnly()) return;
 
-        // Get collections from Maintainerr
-        var collections = Guard.Against.NullOrEmpty(await maintainerrClient.GetCollections(),
-                message: "Maintainerr returned zero active collections. Check configuration.")
-            .ToList();
+        var collections = await maintainerrClient.GetCollections();
+
+        if (collections.Count == 0)
+        {
+            logger.LogInformation(
+                "Zero collections fetched from Maintainerr. If this is unexpected, please check your configuration");
+        }
 
         var removedOverlays = await RestoreOriginalPostersMissingFromMaintainerr(collections);
         var appliedOverlays = 0;
@@ -61,6 +64,8 @@ public class OverlayManagerCommand(
         // For each collection, process overlays and update state
         foreach (var collection in collections)
         {
+            logger.LogDebug("Processing items for {CollectionTitle}", collection.Title);
+
             if (cancellationToken.IsCancellationRequested)
             {
                 logger.LogInformation("Manual termination requested..");
@@ -69,22 +74,40 @@ public class OverlayManagerCommand(
 
             if (!collection.IsActive)
             {
-                logger.LogInformation("Collection {CollectionName} is not an active collection in Maintainerr",
+                logger.LogInformation(
+                    "Collection {CollectionTitle} is not an active collection in Maintainerr. Skipping collection..",
                     collection.Title);
                 continue;
             }
 
             if (collection.DeleteAfterDays <= 0)
             {
-                logger.LogInformation("Collection {CollectionName} does not have a 'Delete after days' value set",
+                logger.LogInformation(
+                    "Collection {CollectionTitle} does not have a 'Delete after days' value set. Skipping collection..",
                     collection.Title);
                 continue;
             }
 
-            var items = await plexMetadataBuilder.BuildFromMaintainerrCollection(collection);
+            if (collection.Media == null || collection.Media.Count == 0)
+            {
+                logger.LogInformation("Collection {CollectionTitle} has zero media items. Skipping collection..",
+                    collection.Title);
+                continue;
+            }
+
+            var items = (await plexMetadataBuilder.BuildFromMaintainerrCollection(collection)).ToList();
+
+            if (items.Count == 0)
+            {
+                logger.LogInformation("Was unable to fetch Plex metadata for {CollectionTitle}. Skipping collection..",
+                    collection.Title);
+                continue;
+            }
 
             foreach (var item in items)
             {
+                logger.LogDebug("Processing item {PlexId}:{FriendlyTitle} from collection {CollectionTitle}", item.PlexId, item.FriendlyTitle, collection.Title);
+
                 if (cancellationToken.IsCancellationRequested)
                 {
                     logger.LogInformation("Manual termination requested..");
@@ -271,16 +294,24 @@ public class OverlayManagerCommand(
 
     private async Task<int> RestoreOriginalPostersMissingFromMaintainerr(List<MaintainerrCollection> collections)
     {
-        // Get all PlexIds currently in Maintainerr
-        var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId).ToHashSet();
-
-        // Restore overlays for items no longer in Maintainerr but still in Plex
-        var pendingRestores = overlayStateManager.GetNeedsRestoresMissingFromList(currentPlexIds);
         var count = 0;
 
-        foreach (var pendingRestore in pendingRestores)
+        try
         {
-            if (await RestoreOriginalPoster(pendingRestore, true)) count++;
+            // Get all PlexIds currently in Maintainerr
+            var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId).ToHashSet();
+
+            // Restore overlays for items no longer in Maintainerr but still in Plex
+            var pendingRestores = overlayStateManager.GetNeedsRestoresMissingFromList(currentPlexIds);
+
+            foreach (var pendingRestore in pendingRestores)
+            {
+                if (await RestoreOriginalPoster(pendingRestore, true)) count++;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error restoring original posters missing from Maintainerr");
         }
 
         return count;
