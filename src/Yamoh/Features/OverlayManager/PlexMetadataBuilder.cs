@@ -50,7 +50,7 @@ public class PlexMetadataBuilder(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Exception encountered when attempting to hydrate metadata for {CollectionName}", collection.Title );
+            logger.LogError(ex, "Exception encountered when attempting to hydrate metadata for {CollectionName}", collection.Title);
         }
 
         return new List<PlexMetadataBuilderItem>();
