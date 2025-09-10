@@ -4,7 +4,7 @@ namespace Yamoh.Infrastructure.EnvironmentUtility;
 
 public class AppFolderInitializer(AppEnvironment env)
 {
-    public record PermissionCheckFailureResult(string Path, string Message);
+    public record PermissionCheckResult(string Path, bool Successful, string Message);
 
     public void Initialize()
     {
@@ -13,30 +13,40 @@ public class AppFolderInitializer(AppEnvironment env)
         Directory.CreateDirectory(env.StateFolder);
     }
 
-    public List<PermissionCheckFailureResult> CheckRequiredFolderPermissions()
+    public List<PermissionCheckResult> CheckRequiredFolderPermissions()
     {
         Log.Debug("Checking Directory permissions...");
-        var results = new List<PermissionCheckFailureResult>();
+        var results = new List<PermissionCheckResult>();
 
-        foreach (var folder in env.Folders)
+        results.Add(HasPermissions(env.ConfigFolder, includeWrite: true));
+        results.Add(HasPermissions(env.DefaultsFolder, includeWrite: false));
+        results.Add(HasPermissions(env.StateFolder, includeWrite: true));
+        results.Add(HasPermissions(env.LogFolder, includeWrite: true));
+
+        return results;
+    }
+
+    private PermissionCheckResult HasPermissions(string path, bool includeWrite = false)
+    {
+        try
         {
-            try
-            {
-                // Test read
-                var files = Directory.GetFiles(folder);
+            // Test read
+            var files = Directory.GetFiles(path);
 
+            if (includeWrite)
+            {
                 // Test write
-                var testFile = Path.Combine(folder, "permission_test.tmp");
+                var testFile = Path.Combine(path, "permission_test.tmp");
                 File.WriteAllText(testFile, "test");
                 File.Delete(testFile);
             }
-            catch (Exception ex)
-            {
-                results.Add(new PermissionCheckFailureResult(folder, ex.Message));
-            }
+        }
+        catch (Exception ex)
+        {
+            return new PermissionCheckResult(path, false, ex.Message);
         }
 
-        return results;
+        return new PermissionCheckResult(path, true, "No errors");
     }
 
     public void CopyDefaultsIfMissing()

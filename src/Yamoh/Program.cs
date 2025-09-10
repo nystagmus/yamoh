@@ -44,7 +44,7 @@ initializer.Initialize();
 
 var folderPermissionErrors = initializer.CheckRequiredFolderPermissions();
 
-if (folderPermissionErrors.Count != 0)
+if (folderPermissionErrors.Any(x => !x.Successful))
 {
     foreach (var error in folderPermissionErrors)
     {

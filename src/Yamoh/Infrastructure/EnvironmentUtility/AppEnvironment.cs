@@ -9,7 +9,6 @@ public class AppEnvironment
     public string LogFolder { get; }
     public string StateFolder { get; }
     public bool IsDocker { get; }
-    public List<string> Folders => [ConfigFolder, DefaultsFolder, LogFolder, StateFolder];
 
     public AppEnvironment()
     {
