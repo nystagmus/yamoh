@@ -136,7 +136,7 @@ public class PlexMetadataBuilder(
 
                 var items = new List<PlexMetadataBuilderItem> { item };
 
-                if (!this._overlayBehaviorConfiguration.OverlaySeasonEpisodes)
+                if (!this._overlayBehaviorConfiguration.OverlayShowSeasons)
                 {
                     return items;
                 }

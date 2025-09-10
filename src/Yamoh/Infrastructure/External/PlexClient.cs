@@ -181,7 +181,7 @@ public class PlexClient
 
     public async Task<bool> RemoveKometaLabelFromItem(long librarySectionId, int plexId, MaintainerrPlexDataType type)
     {
-        if(_overlayBehaviorConfiguration.ManageKometaOverlayLabel)
+        if (_overlayBehaviorConfiguration.ManageKometaOverlayLabel)
             return await RemoveLabelKeyFromItem(librarySectionId, plexId, type, KometaOverlayLabel);
         return true;
     }
@@ -192,5 +192,69 @@ public class PlexClient
 
         return labels != null && labels.Any(x =>
             x.Tag != null && x.Tag.Equals(KometaOverlayLabel, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<PlexMetadataResponse?> GetPlexCollectionsAsync(int librarySectionId)
+    {
+        var urlStub = $"/library/sections/{librarySectionId}/collections";
+        var fullUrl = BuildPlexUrl(urlStub);
+
+        try
+        {
+            var response = await this._httpClient.GetFromJsonAsync<PlexMetadataResponse>(fullUrl,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            return response;
+        }
+        catch (Exception ex)
+        {
+            this._logger.LogError(ex, "Failed to fetch collections for LibraryId: {FullUrl}",
+                RemovePlexAuthToken(fullUrl));
+            return null;
+        }
+    }
+
+    public async Task<bool> PutPlexCollectionManualSortOrder(int plexCollectionRatingKey)
+    {
+        var urlStub = $"/library/metadata/{plexCollectionRatingKey}/prefs";
+        var fullUrl = BuildPlexUrl(urlStub);
+
+        try
+        {
+            var body = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                {
+                    "collectionSort", "2"
+                }
+            });
+            var response = await this._httpClient.PutAsync(fullUrl, body);
+            response.EnsureSuccessStatusCode();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this._logger.LogError(ex, "Failed to set collection sort order for CollectionId: {PlexCollectionRatingKey}",
+                plexCollectionRatingKey);
+            return false;
+        }
+    }
+
+    public async Task<bool> PutPlexCollectionItemAfter(int plexCollectionRatingKey, int plexId, int moveAfterId)
+    {
+        var urlStub = $"/library/collections/{plexCollectionRatingKey}/items/{plexId}/move?after={moveAfterId}";
+        var fullUrl = BuildPlexUrl(urlStub);
+
+        try
+        {
+            var response = await this._httpClient.PutAsync(fullUrl, new StringContent(string.Empty));
+            response.EnsureSuccessStatusCode();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this._logger.LogError(ex,
+                "Failed to move {PlexId} after {MoveAfterId} in CollectionId: {PlexCollectionRatingKey}", plexId,
+                moveAfterId, plexCollectionRatingKey);
+            return false;
+        }
     }
 }
