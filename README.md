@@ -20,6 +20,10 @@ Yamoh is a C#/.NET 8+ console application that automates poster overlays for Ple
 - Outputs the full configuration at startup for verification.
 - Handles both Windows and Unix-style paths, network shares, and file operations.
 
+### Recommended order of Asset management activities
+
+![Diagram of recommended asset flow. Asset Generation > Yamoh > Kometa > ImageMaid](/assets/flowdiagram.png)
+
 ## Platforms
 - **Windows x64**
 - **Linux x64**
