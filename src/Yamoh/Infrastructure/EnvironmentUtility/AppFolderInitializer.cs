@@ -31,7 +31,7 @@ public class AppFolderInitializer(AppEnvironment env)
         try
         {
             // Test read
-            var files = Directory.GetFiles(path);
+            var files = Directory.EnumerateFiles(path).Take(1).Any();
 
             if (includeWrite)
             {
