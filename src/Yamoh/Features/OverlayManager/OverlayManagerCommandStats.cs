@@ -11,7 +11,7 @@ public class OverlayManagerCommandStats
 
     public override string ToString()
     {
-        var sortedCollections = string.Join(", ", $"'{SortedCollections}'");
+        var sortedCollections = string.Join(", ", SortedCollections.Select(x => $"'{x}'"));
 
         var statsString =
             $"{RemovedOverlays} removed, {AppliedOverlays} applied, {SkippedOverlays} skipped, {SkippedBecauseOfError} error skips, and sorted {sortedCollections} collections";

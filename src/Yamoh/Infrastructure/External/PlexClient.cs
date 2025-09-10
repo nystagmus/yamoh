@@ -233,7 +233,7 @@ public class PlexClient
         catch (Exception ex)
         {
             this._logger.LogError(ex, "Failed to set collection sort order for CollectionId: {PlexCollectionRatingKey}",
-                RemovePlexAuthToken(fullUrl));
+                plexCollectionRatingKey);
             return false;
         }
     }
@@ -253,7 +253,7 @@ public class PlexClient
         {
             this._logger.LogError(ex,
                 "Failed to move {PlexId} after {MoveAfterId} in CollectionId: {PlexCollectionRatingKey}", plexId,
-                moveAfterId, RemovePlexAuthToken(fullUrl));
+                moveAfterId, plexCollectionRatingKey);
             return false;
         }
     }

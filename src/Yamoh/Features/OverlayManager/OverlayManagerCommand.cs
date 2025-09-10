@@ -145,7 +145,7 @@ public class OverlayManagerCommand(
         }
 
         // sort the items in plex
-        for (var i = 1; i < sortedItems.Count - 1; i++)
+        for (var i = 1; i < sortedItems.Count; i++)
         {
             var item = sortedItems[i];
             var predecessor = sortedItems[i - 1];
@@ -163,7 +163,12 @@ public class OverlayManagerCommand(
             return false;
         }
 
-        stats.SortedCollections.Add(collection.Title ?? collection.PlexId.ToString());
+        stats.SortedCollections.Add(
+            !string.IsNullOrWhiteSpace(collection.Title)
+                ? collection.Title
+                : collection.PlexId != 0
+                    ? $"Collection {collection.PlexId}"
+                    : "Unknown Collection");
         return true;
     }
 
