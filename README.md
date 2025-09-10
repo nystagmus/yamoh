@@ -24,7 +24,7 @@ Yamoh is a C#/.NET 8+ console application that automates poster overlays for Ple
 - **Windows x64**
 - **Linux x64**
 - **macOS x64**
-- **Docker Container** (available on Docker Hub: `docker pull ${{ secrets.DOCKERHUB_USERNAME }}/yamoh:<version>`)
+- **Docker Container** (available on Docker Hub: `docker pull smashenter/yamoh:latest`)
 
 ## Usage
 1. Configure the app using the provided JSON config file and environment variables.
@@ -45,7 +45,7 @@ docker run \
   -e YAMOH__PLEXURL="http://plex:32400" \
   -e YAMOH__PLEXTOKEN="your_plex_token" \
   -e YAMOH__MAINTAINERRURL="http://maintainerr:6246" \
-  yamoh:latest
+  smashenter/yamoh:latest
 ```
 
 ### Using Docker Compose
@@ -54,7 +54,7 @@ docker run \
 version: '3.8'
 services:
   yamoh:
-    image: yamoh:latest
+    image: smashenter/yamoh:latest
     container_name: yamoh
     environment:
       YAMOH__PLEXURL: "http://plex:32400"
