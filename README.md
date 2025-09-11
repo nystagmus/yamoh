@@ -137,6 +137,7 @@ Movies:
 
 - **Asset Folder Structure:**
   Yamoh currently only supports Kometa’s `asset_folders: true` mode. This means assets must be organized in subfolders named after each collection or item, rather than using flat asset files.
+
 Example structure:
 ```
 /path/to/assets/
@@ -162,8 +163,7 @@ Example structure:
   └── ...
 ```
 
-- **Reference:**
-  For more details on Kometa’s asset configuration, see the [Kometa Asset Guide](https://metamanager.wiki/en/latest/kometa/guides/assets/).
+- For more details on Kometa’s asset configuration, see the [Kometa Asset Guide](https://metamanager.wiki/en/latest/kometa/guides/assets/).
 
 # Configuration
 
