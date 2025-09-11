@@ -248,6 +248,7 @@ Example structure:
 
 > [!Note]
 > 1. The application derives configuration values from `appsettings.json` in the config folder and Environment Variables. Any **Environment Variables** that exist will override values in `appsettings.json`.
+> 2. Example configuration file: [appsettings.json](src/Yamoh/Defaults/appsettings.json)
 > 1. Environment variable names use double underscores (`__`) to represent nested config keys.
 > 2. For array or list configuration values (e.g., `MaintainerrCollectionsFilter`), environment variables should be set as a comma-separated string. For example:
 > `OVERLAYBEHAVIOR__MAINTAINERRCOLLECTIONSFILTER=Movies,Shows,My Custom Collection`
