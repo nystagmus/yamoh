@@ -16,6 +16,7 @@ Yamoh is a C#/.NET 9+ console application that automates the creation of highly 
 
 ### Example of 'Date' OverlayTextMode
 <img src="assets/example.png" alt="Example of Yamoh's overlays"/>
+(Yamoh's overlay can be seen at the bottom. The top right ribbon is a simple collection overlay applied by Kometa)
 
 ### Example of 'DaysLeft' OverlayTextMode
 <img src="assets/daysleft_example.png" alt="Example of Yamoh's days left overlays"/>
