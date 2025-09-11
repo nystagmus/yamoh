@@ -1,24 +1,37 @@
-# Yamoh - Yet Another Maintainerr Overlay Helper
+<div align="center">
+<img width="20%" src="assets/yamoh_logo.svg" alt="Yamoh - yet another Maintainerr Overlay Helper">
+<h1 align="center">Yamoh</h1>
+<b>Yet Another Maintainerr Overlay Helper</b>
+</div>
 
-Yamoh is a C#/.NET 8+ console application that automates poster overlays for Plex media collections managed by Maintainerr.
+# What is Yamoh?
+
+Yamoh is a C#/.NET 9+ console application that automates the creation of highly configurable poster overlays for Plex media collections managed by [Maintainerr](https://github.com/jorenn92/Maintainerr).
 
 >[!Important]
 > **Inspiration:**
-> Yamoh was inspired by [gssariev/maintainerr-overlay-helperr](https://github.com/gssariev/maintainerr-overlay-helperr) and shares a similar goal of automating poster overlays for Plex collections managed by Maintainerr.
+> Yamoh was inspired by [gssariev/maintainerr-overlay-helperr](https://github.com/gssariev/maintainerr-overlay-helperr) and [Maintainerr Poster Overlay](https://gitlab.com/jakeC207/maintainerr-poster-overlay) and shares a similar goal of automating poster overlays for Plex collections managed by Maintainerr.
+>
 > **Key Difference:** Yamoh manages image assets on disk, building a directory structure that mirrors your Plex library for Kometa compatibility, rather than uploading overlays directly to Plex. (Direct Plex upload support may be added in the future.)
 
+### Example of 'Date' OverlayTextMode
+<img src="assets/example.png" alt="Example of Yamoh's overlays"/>
+
+### Example of 'DaysLeft' OverlayTextMode
+<img src="assets/daysleft_example.png" alt="Example of Yamoh's days left overlays"/>
+
 ## Features
-- Periodically polls the Maintainerr API (`/api/collections`) to get collections and media items.
-- For each media item, uses its Plex ID to query the Plex API for metadata (library name, folder, media file path).
-- Builds an asset directory structure that mirrors the Plex library and media folder hierarchy, storing posters as `{AssetBaseDir}/{LibraryName}/{RelativeMediaDir}/poster.{ext}`.
-- If an original poster does not exist in the asset directory, downloads it from Plex and detects its image format.
-- FUTURE: Optionally manages posters directly in Plex (configurable).
-- Applies a configurable overlay (text, color, font, transparency, etc.) to the poster image and saves the result, preserving the image format.
-- Maintains state between runs to track which items have overlays applied.
-- Restores original posters for items removed from the Maintainerr collection.
-- Supports configuration via JSON file and environment variables (overlay appearance, asset paths, polling interval, etc.).
-- Outputs the full configuration at startup for verification.
-- Handles both Windows and Unix-style paths, network shares, and file operations.
+
+- **Asset Mode**: works with assets in the specified asset directory (`poster.jpg`, `Season01.jpg`, etc.) compatible with [Kometa](https://github.com/Kometa-Team/Kometa)
+- **Collections**: supports all collection types (Movies, TV Shows, Seasons, Episodes), can process multiple collections, and can reorder Plex collections in either ascending or descending depending on expiration date
+- **Heirarchy**: can optionally apply overlays to children items (e.g. a tv show, its seasons, and its episodes)
+- **Customization**: specify text, color, size, shape, and position of overlay
+- **Reversion**: maintains backup of original poster and will revert back to the original poster when the item is removed from the Maintainerr collection, or can revert manually through configuration
+- **Automatic Overlay Update**: updates the overlay with any changes from configuration or Maintainerr
+- **Text Render Options**: choose between using the item's expiration date (`Date` mode) or days remaining (`DaysLeft` mode)
+- **Localization**: (_experimental_) should support localization via the configurable culture string
+- **Scheduling**: supports [CRON](https://crontab.guru/) scheduling expressions
+- **Manual**: supports manual runs via cli
 
 ### Recommended order of Asset management activities
 
@@ -33,7 +46,37 @@ Yamoh is a C#/.NET 8+ console application that automates poster overlays for Ple
 ## Usage
 1. Configure the app using the provided JSON config file and environment variables.
 2. Run the app as a console application or in Docker.
-3. Overlays will be applied and managed automatically based on Maintainerr collections.
+3. If Schedule is enabled, overlays will be applied and managed automatically based on Maintainerr collections.
+
+### Manual Commands
+
+Yamoh can be run manually from the command line with the following commands:
+
+#### 1. update-maintainerr-overlays
+This is the main command. It processes all Maintainerr collections and applies overlays according to your configuration. This is also the command run automatically when scheduling is enabled.
+
+**Windows:**
+```powershell
+Yamoh.exe update-maintainerr-overlays
+```
+**Linux/macOS/Docker:**
+```bash
+dotnet Yamoh.dll update-maintainerr-overlays
+```
+
+#### 2. test-overlay-image
+Generates 10 test posters with various expiration dates using your current configuration and saves them in the configured Temp folder. Useful for previewing overlay appearance and verifying configuration.
+
+**Windows:**
+```powershell
+Yamoh.exe test-overlay-image
+```
+**Linux/macOS/Docker:**
+```bash
+dotnet Yamoh.dll test-overlay-image
+```
+
+> You can pass additional CLI arguments or override configuration values using environment variables as described above.
 
 ## Running Yamoh with Docker
 
@@ -69,7 +112,7 @@ services:
 ```
 
 - Replace `/path/to/config` with the path to your local config directory.
-- All configuration can be set via environment variables or files in the `/config` directory.
+- All configuration can be set via environment variables or by editing `appsettings.json` in the `/config` directory.
 
 # Configuration
 
