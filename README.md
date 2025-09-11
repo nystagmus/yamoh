@@ -15,11 +15,81 @@ Yamoh is a C#/.NET 9+ console application that automates the creation of highly 
 > **Key Difference:** Yamoh manages image assets on disk, building a directory structure that mirrors your Plex library for Kometa compatibility, rather than uploading overlays directly to Plex. (Direct Plex upload support may be added in the future.)
 
 ### Example of 'Date' OverlayTextMode
-<img src="assets/example.png" alt="Example of Yamoh's overlays"/>
+
+<details>
+<summary>Configuration</summary>
+
 (Yamoh's overlay can be seen at the bottom. The top right ribbon is a simple collection overlay applied by Kometa)
 
+```json
+  "Overlay": {
+    "FontName": "AvenirNextLTPro-Bold",
+    "FontColor": "#FFFFFF",
+    "FontTransparency": 0.70,
+    "BackColor": "#7f161b",
+    "BackTransparency": 0.70,
+    "FontSize": 75,
+    "Padding": 20,
+    "BackRadius": 0,
+    "HorizontalOffset": 0,
+    "HorizontalAlign": "center",
+    "VerticalOffset": 0,
+    "VerticalAlign": "bottom",
+    "BackWidth": 1920,
+    "BackHeight": 0,
+    "OverlayText": "Leaving",
+    "EnableUppercase": true,
+    "Language": "en-US",
+    "OverlayTextMode": "Date",
+    "DateFormat": "MMM d",
+    "DateEnableDaySuffix": true,
+    "DaysLeftMinUnit": "Day",
+    "DaysLeftMaxUnit": "Week",
+    "DaysLeftPrecision": 2
+  },
+```
+
+</details>
+
+<img src="assets/example.png" alt="Example of Yamoh's overlays"/>
+
 ### Example of 'DaysLeft' OverlayTextMode
+
+<details>
+<summary>Configuration</summary>
+
+```json
+  "Overlay": {
+    "FontName": "AvenirNextLTPro-Bold",
+    "FontColor": "#FFFFFF",
+    "FontTransparency": 1.0,
+    "BackColor": "#7f161b",
+    "BackTransparency": 0.80,
+    "FontSize": 75,
+    "Padding": 20,
+    "BackRadius": 0,
+    "HorizontalOffset": 0,
+    "HorizontalAlign": "center",
+    "VerticalOffset": 0,
+    "VerticalAlign": "bottom",
+    "BackWidth": 1000,
+    "BackHeight": 0,
+    "OverlayTextMode": "DaysLeft",
+    "OverlayText": "Leaving in",
+    "EnableUppercase": false,
+    "Language": "en-US",
+    "DateFormat": "MMM d",
+    "DateEnableDaySuffix": true,
+    "DaysLeftMinUnit": "Day",
+    "DaysLeftMaxUnit": "Week",
+    "DaysLeftPrecision": 2
+  },
+```
+
+</details>
+
 <img src="assets/daysleft_example.png" alt="Example of Yamoh's days left overlays"/>
+
 
 ## Features
 
