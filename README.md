@@ -23,6 +23,7 @@ Yamoh is a C#/.NET 9+ console application that automates the creation of highly 
 ## Features
 
 - **Asset Mode**: works with assets in the specified asset directory (`poster.jpg`, `Season01.jpg`, etc.) compatible with [Kometa](https://github.com/Kometa-Team/Kometa)
+- **Manage Kometa Label**: can optionally manage the Kometa `Overlay` label, removing it when changes to the asset are made. This forces Kometa to refresh the Plex poster on its next run.
 - **Collections**: supports all collection types (Movies, TV Shows, Seasons, Episodes), can process multiple collections, and can reorder Plex collections in either ascending or descending depending on expiration date
 - **Heirarchy**: can optionally apply overlays to children items (e.g. a tv show, its seasons, and its episodes)
 - **Customization**: specify text, color, size, shape, and position of overlay
@@ -76,7 +77,7 @@ Yamoh.exe test-overlay-image
 dotnet Yamoh.dll test-overlay-image
 ```
 
-> You can pass additional CLI arguments or override configuration values using environment variables as described above.
+> You can pass additional CLI arguments or override configuration values using environment variables as described below.
 
 ## Running Yamoh with Docker
 
@@ -113,6 +114,56 @@ services:
 
 - Replace `/path/to/config` with the path to your local config directory.
 - All configuration can be set via environment variables or by editing `appsettings.json` in the `/config` directory.
+
+# Kometa Compatibility
+
+
+## Kometa Asset Configuration for Yamoh
+
+To ensure Kometa and Yamoh work together seamlessly for overlay assets, follow these guidelines:
+
+- **Enable Asset Support in Kometa:**
+  Set `assets_for_all: true` in your Kometa [collection configuration](https://metamanager.wiki/en/latest/kometa/guides/assets/#applying-assets). This ensures Kometa will look for and apply assets (such as overlays and posters) for these libraries.
+
+Example:
+```yaml
+Movies:
+  operations:
+    assets_for_all: true
+```
+
+- **Asset Directory Consistency:**
+  The `asset_directory` value in Kometa's [configuration](https://metamanager.wiki/en/latest/kometa/guides/assets/#requirements-and-configuration) must match the directory configured for Yamoh.
+
+- **Asset Folder Structure:**
+  Yamoh currently only supports Kometa’s `asset_folders: true` mode. This means assets must be organized in subfolders named after each collection or item, rather than using flat asset files.
+Example structure:
+```
+/path/to/assets/
+  ├── Movies/
+  │     ├── Star Wars (1977)/
+  │     │     ├── background.png
+  │     │     └── poster.png
+  │     ├── The Lord of the Rings The Fellowship of the Ring (2001)/
+  │     │     ├── background.png
+  │     │     └── poster.png
+  │     └── ...
+  ├── TV Shows/
+  │     ├── Alien - Earth (2001)/
+  │     │     ├── background.png
+  │     │     ├── poster.png
+  │     │     ├── S01E01.png
+  │     │     ├── S01E02.png
+  │     │     ├── S01E03.png
+  │     │     ├── S01E04.png
+  │     │     ├── S01E05.png
+  │     │     └── S01E06.png
+  │     └── ...
+  └── ...
+```
+
+- **Reference:**
+  For more details on Kometa’s asset configuration, see the [Kometa Asset Guide](https://metamanager.wiki/en/latest/kometa/guides/assets/).
 
 # Configuration
 
@@ -168,7 +219,7 @@ services:
 | Overlay:DateFormat          | OVERLAY__DATEFORMAT            | "MMM d"               | DateTime format for overlay. See [Date and Time Format Strings](https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings) for examples |
 | Overlay:DateEnableDaySuffix     | OVERLAY__ENABLEDAYSUFFIX       | true                  | Show day suffix in overlay (e.g. 12**th**, 31**st**, etc.) |
 | Overlay:DaysLeftMinUnit     | OVERLAY__DAYSLEFTMINUNIT       | "Day"                 | [Humanizer](https://github.com/Humanizr/Humanizer) [TimeUnit enum](https://github.com/Humanizr/Humanizer/blob/main/src/Humanizer/Localisation/TimeUnit.cs) value to use for minimum resolution of Days Left calculation |
-| Overlay:DaysLeftMaxUnit     | OVERLAY__DAYSLEFTMAXUNIT       | "Day"                 | Humanizer TimeUnit enum value to use for maximum resolution of Days Left calculation |
+| Overlay:DaysLeftMaxUnit     | OVERLAY__DAYSLEFTMAXUNIT       | "Week"                 | Humanizer TimeUnit enum value to use for maximum resolution of Days Left calculation |
 | Overlay:DaysLeftPrecision   | OVERLAY__DAYSLEFTPRECISION     | 2                     | Humanizer Granularity of "Days Left" calculation. |
 
 
