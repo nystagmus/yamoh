@@ -29,7 +29,7 @@ public class MaintainerrClient(
 
             result.EnsureSuccessStatusCode();
 
-            var versionString = await result.Content.ReadAsStringAsync();
+            var versionString = (await result.Content.ReadAsStringAsync()).Trim().Trim('"');
 
             _cachedVersion = new Version(versionString);
 
