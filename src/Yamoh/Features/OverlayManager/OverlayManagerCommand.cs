@@ -135,7 +135,7 @@ public class OverlayManagerCommand(
         // only work with the items in the collection
         var collectionIds = collection.Media?.Select(x => x.MediaServerId).ToList();
         if (collectionIds == null || collectionIds.Count == 0) return false;
-        var collectionItems = items.Where(x => collectionIds.Contains(x.PlexId.ToString())).ToList();
+        var collectionItems = items.Where(x => collectionIds.Contains(x.PlexId)).ToList();
 
         var sortedItems = collectionItems.OrderBy(x => x.ExpirationDate).ToList();
 
