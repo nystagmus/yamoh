@@ -75,7 +75,7 @@ src/
 
 **Image processing:** `OverlayHelper` uses Magick.NET to draw a colored rectangle + text onto poster images. `OverlayGeometry` calculates scaled positions for all alignments (left/center/right, top/center/bottom) relative to image dimensions.
 
-**Configuration:** Three config sections — `Yamoh` (paths, URLs), `Overlay` (visual settings), `OverlayBehavior` (behavior flags), `Schedule` (CRON). All bound via `IOptions<T>` with `ValidateDataAnnotations` + `ValidateOnStart`. Environment variables override `appsettings.json` using double-underscore separators (e.g., `YAMOH__PLEXURL`).
+**Configuration:** Four config sections — `Yamoh` (paths, URLs), `Overlay` (visual settings), `OverlayBehavior` (behavior flags), `Schedule` (CRON). All bound via `IOptions<T>` with `ValidateDataAnnotations` + `ValidateOnStart`. Environment variables override `appsettings.json` using double-underscore separators (e.g., `YAMOH__PLEXURL`).
 
 **Config folder locations:**
 - Docker: `/config/`
