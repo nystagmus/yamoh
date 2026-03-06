@@ -229,6 +229,10 @@ public class OverlayManagerCommand(
             state.MaintainerrPlexType = item.DataType;
             state.IsChild = item.IsChild;
 
+            if (!string.IsNullOrWhiteSpace(item.ParentPlexId) && int.TryParse(item.ParentPlexId, out var parentPlexId))
+            {
+                state.ParentPlexId = parentPlexId;
+            }
             var overlayText = this._overlayConfiguration.GetOverlayText(item.ExpirationDate);
             var overlayTextChanged = !string.Equals(overlayText, state.OverlayText, StringComparison.Ordinal);
 
