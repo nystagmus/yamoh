@@ -33,7 +33,7 @@ public class AssetManager(PlexClient plexClient)
         string mediaFileName, string originalPlexPosterUrl)
     {
         // 1. Look for a poster.jpg in the asset directory if exists
-        // 2. Look for a backup if it doesnt exist
+        // 2. Look for a backup if it doesn't exist
         // 3. If neither exist download a new one from Plex and save it to asset path
         // 4. Return the backup path - we'll always be working with the backup (but not overwriting it).
 
