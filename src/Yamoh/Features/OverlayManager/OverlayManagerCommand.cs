@@ -337,8 +337,8 @@ public class OverlayManagerCommand(
         if (filter.Count == 0)
         {
             logger.LogInformation(
-                "No Maintainerr Collections filter found, processing all active collections with 'DeleteAfterDays' value set");
-            return collections.Where(x => x is { IsActive: true, DeleteAfterDays: > 0 }).ToList();
+                "No Maintainerr Collections filter found, processing all active Plex collections with 'DeleteAfterDays' value set");
+            return collections.Where(x => x is { IsActive: true, DeleteAfterDays: > 0, MediaServerType: "plex" }).ToList();
         }
 
         var collectionTitles = collections
