@@ -62,7 +62,7 @@ public class OverlayTestImageCommand(
                 var overlayText = _overlayConfiguration.GetOverlayText(expirationDate);
 
                 var result = overlayHelper.AddOverlay(
-                    0,
+                    "testing",
                     tempPath,
                     overlayText,
                     overlaySettings);

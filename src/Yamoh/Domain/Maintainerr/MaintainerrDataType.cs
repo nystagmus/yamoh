@@ -1,7 +1,8 @@
 ﻿namespace Yamoh.Domain.Maintainerr;
 
-public enum MaintainerrPlexDataType
+public enum MaintainerrDataType
 {
+    Unknown = 0,
     Movies = 1,
     Shows = 2,
     Seasons = 3,

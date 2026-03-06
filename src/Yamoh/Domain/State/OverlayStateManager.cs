@@ -26,9 +26,18 @@ namespace Yamoh.Domain.State
             this._collection.Upsert(item);
         }
 
-        public OverlayStateItem? GetByPlexId(int plexId) => this._collection.FindById(plexId);
+        public OverlayStateItem? GetByPlexId(string mediaServerId) =>
+            int.TryParse(mediaServerId, out var id)
+                ? this._collection.FindById(id)
+                : null;
 
         public IEnumerable<OverlayStateItem> GetAll() => this._collection.FindAll();
+
+        public void Remove(string mediaServerId)
+        {
+            if (int.TryParse(mediaServerId, out var id))
+                this._collection.Delete(id);
+        }
 
         public void Remove(int plexId)
         {
@@ -40,11 +49,18 @@ namespace Yamoh.Domain.State
             return this._collection.Find(x => x.OverlayApplied);
         }
 
-        public IEnumerable<OverlayStateItem> GetNeedsRestoresMissingFromList(IEnumerable<int> currentPlexIds)
+        public IEnumerable<OverlayStateItem> GetNeedsRestoresMissingFromList(IEnumerable<string> currentMediaServerIds)
         {
-            currentPlexIds = currentPlexIds.ToList();
-            // Items that have overlays applied but are no longer in Maintainerr
-            return this._collection.Find(x => x.OverlayApplied && !(currentPlexIds.Contains(x.PlexId) || (x.ParentPlexId != null && currentPlexIds.Contains(x.ParentPlexId.Value))));
+            var currentIds = currentMediaServerIds
+                .Select(id => int.TryParse(id, out var i) ? (int?)i : null)
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .ToList();
+
+            return this._collection.Find(x =>
+                x.OverlayApplied &&
+                !(currentIds.Contains(x.PlexId) ||
+                  (x.ParentPlexId != null && currentIds.Contains(x.ParentPlexId.Value))));
         }
 
         public void Dispose()

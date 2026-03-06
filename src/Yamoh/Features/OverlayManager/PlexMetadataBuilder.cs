@@ -1,9 +1,9 @@
-using System.Net;
 using Ardalis.GuardClauses;
 using LukeHagar.PlexAPI.SDK;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Net;
 using Yamoh.Domain.Maintainerr;
 using Yamoh.Infrastructure.Configuration;
 using Yamoh.Infrastructure.External;
@@ -21,29 +21,34 @@ public class PlexMetadataBuilder(
 
     private GetAllLibrariesResponse? _allLibraries;
 
-    public async Task<IEnumerable<PlexMetadataBuilderItem>> BuildFromMaintainerrCollection(MaintainerrCollection collection)
+    public async Task<IEnumerable<PlexMetadataBuilderItem>> BuildFromMaintainerrCollection(IMaintainerrCollectionResponse collection)
     {
-        if (collection.Media == null)
+        // update to exclude collections without a delete action set. Could possibly expand this in future to do other things
+        // with collections that are used for other purposes
+        if (collection.Media is null || collection.DeleteAfterDays is null)
         {
-            return new List<PlexMetadataBuilderItem>();
+            return [];
         }
 
+        var deleteAfterDays = collection.DeleteAfterDays.Value;
+
         var maintainerrMedia = collection.Media
-            .Select(x => new MaintainerrMediaDto(x.PlexId, x.AddDate))
+            .Where(x => x.MediaServerId is not null)
+            .Select(x => new MaintainerrMediaDto(x.MediaServerId!, x.AddDate))
             .ToList();
 
         try
         {
             var items = collection.Type switch
             {
-                (int)MaintainerrPlexDataType.Movies => await GatherMovieCollectionItems(collection.Title,
-                    collection.DeleteAfterDays, maintainerrMedia),
-                (int)MaintainerrPlexDataType.Shows => await GatherShowCollectionItems(collection.Title,
-                    collection.DeleteAfterDays, maintainerrMedia),
-                (int)MaintainerrPlexDataType.Seasons => await GatherSeasonCollectionItems(collection.Title,
-                    collection.DeleteAfterDays, maintainerrMedia),
-                (int)MaintainerrPlexDataType.Episodes => await GatherEpisodeCollectionItems(collection.Title,
-                    collection.DeleteAfterDays, maintainerrMedia),
+                MaintainerrDataType.Movies => await GatherMovieCollectionItems(collection.Title,
+                    deleteAfterDays, maintainerrMedia),
+                MaintainerrDataType.Shows => await GatherShowCollectionItems(collection.Title,
+                    deleteAfterDays, maintainerrMedia),
+                MaintainerrDataType.Seasons => await GatherSeasonCollectionItems(collection.Title,
+                    deleteAfterDays, maintainerrMedia),
+                MaintainerrDataType.Episodes => await GatherEpisodeCollectionItems(collection.Title,
+                    deleteAfterDays, maintainerrMedia),
                 _ => []
             };
             return items;
@@ -61,7 +66,7 @@ public class PlexMetadataBuilder(
         List<MaintainerrMediaDto> maintainerrMedia)
     {
         return await GatherCollectionItems(
-            MaintainerrPlexDataType.Movies,
+            MaintainerrDataType.Movies,
             collectionTitle,
             deleteAfterDays,
             maintainerrMedia,
@@ -92,7 +97,7 @@ public class PlexMetadataBuilder(
                 {
                     PlexId = plexId,
                     FriendlyTitle = friendlyTitle,
-                    DataType = MaintainerrPlexDataType.Movies,
+                    DataType = MaintainerrDataType.Movies,
                     LibraryName = libraryInfo.LibraryName,
                     LibraryId = (int)libraryInfo.LibrarySectionId,
                     MediaFileRelativePath = mediaFilePath,
@@ -108,7 +113,7 @@ public class PlexMetadataBuilder(
         List<MaintainerrMediaDto> maintainerrMedia)
     {
         return await GatherCollectionItems(
-            MaintainerrPlexDataType.Shows,
+            MaintainerrDataType.Shows,
             collectionTitle,
             deleteAfterDays,
             maintainerrMedia,
@@ -126,7 +131,7 @@ public class PlexMetadataBuilder(
                 {
                     PlexId = plexId,
                     FriendlyTitle = friendlyTitle,
-                    DataType = MaintainerrPlexDataType.Shows,
+                    DataType = MaintainerrDataType.Shows,
                     LibraryName = libraryInfo.LibraryName,
                     LibraryId = (int)libraryInfo.LibrarySectionId,
                     MediaFileRelativePath = libraryInfo.CleanTvShowPath,
@@ -156,7 +161,7 @@ public class PlexMetadataBuilder(
                 }
 
                 var childrenMaintainerrMedia = episodeIds
-                    .Select(x => new MaintainerrMediaDto(x, addDate))
+                    .Select(x => new MaintainerrMediaDto(x.ToString(), addDate))
                     .ToList();
 
                 items.AddRange(await GatherSeasonCollectionItems(collectionTitle, deleteAfterDays,
@@ -171,10 +176,10 @@ public class PlexMetadataBuilder(
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
         bool asChild = false,
-        int? parentId = null)
+        string? parentId = null)
     {
         return await GatherCollectionItems(
-            MaintainerrPlexDataType.Seasons,
+            MaintainerrDataType.Seasons,
             collectionTitle,
             deleteAfterDays,
             maintainerrMedia,
@@ -211,7 +216,7 @@ public class PlexMetadataBuilder(
                 {
                     PlexId = plexId,
                     FriendlyTitle = friendlyTitle,
-                    DataType = MaintainerrPlexDataType.Seasons,
+                    DataType = MaintainerrDataType.Seasons,
                     LibraryName = libraryInfo.LibraryName,
                     LibraryId = (int)libraryInfo.LibrarySectionId,
                     MediaFileRelativePath = libraryInfo.CleanTvShowPath,
@@ -247,7 +252,7 @@ public class PlexMetadataBuilder(
                 }
 
                 var childrenMaintainerrMedia = episodeIds
-                    .Select(x => new MaintainerrMediaDto(x, addDate))
+                    .Select(x => new MaintainerrMediaDto(x.ToString(), addDate))
                     .ToList();
 
                 items.AddRange(await GatherEpisodeCollectionItems(collectionTitle, deleteAfterDays,
@@ -262,10 +267,10 @@ public class PlexMetadataBuilder(
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
         bool asChild = false,
-        int? parentId = null)
+        string? parentId = null)
     {
         return await GatherCollectionItems(
-            MaintainerrPlexDataType.Episodes,
+            MaintainerrDataType.Episodes,
             collectionTitle,
             deleteAfterDays,
             maintainerrMedia,
@@ -304,7 +309,7 @@ public class PlexMetadataBuilder(
                 {
                     PlexId = plexId,
                     FriendlyTitle = fullFriendlyTitle,
-                    DataType = MaintainerrPlexDataType.Episodes,
+                    DataType = MaintainerrDataType.Episodes,
                     LibraryName = libraryInfo.LibraryName,
                     LibraryId = (int)libraryInfo.LibrarySectionId,
                     MediaFileRelativePath = libraryInfo.CleanTvShowPath,
@@ -323,12 +328,12 @@ public class PlexMetadataBuilder(
     }
 
     private async Task<IEnumerable<PlexMetadataBuilderItem>> GatherCollectionItems(
-        MaintainerrPlexDataType dataType,
+        MaintainerrDataType dataType,
         string? collectionTitle,
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
         bool asChild,
-        Func<GetMediaMetaDataMediaContainer, int, DateTime, Task<IEnumerable<PlexMetadataBuilderItem>>> buildItems)
+        Func<GetMediaMetaDataMediaContainer, string, DateTime, Task<IEnumerable<PlexMetadataBuilderItem>>> buildItems)
     {
         if (asChild)
         {
@@ -448,7 +453,7 @@ public class PlexMetadataBuilder(
         throw new InvalidOperationException("Plex Library metadata could not be retrieved");
     }
 
-    private record MaintainerrMediaDto(int PlexId, DateTime AddDate);
+    private record MaintainerrMediaDto(string PlexId, DateTime AddDate);
 
     private record PlexLibraryInfoDto(
         long LibrarySectionId,

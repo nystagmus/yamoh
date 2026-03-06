@@ -10,7 +10,7 @@ namespace Yamoh.Infrastructure.ImageProcessing;
 public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayHelper> logger)
 {
     public AssetPathInfo AddOverlay(
-        int plexId,
+        string plexId,
         AssetPathInfo sourceImage,
         string text,
         AddOverlaySettings settings
@@ -34,10 +34,10 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             var fontAlpha = (ushort)(settings.FontTransparency * ushort.MaxValue)!;
 
             var backMagickColor = new MagickColor(settings.BackColor)
-                { A = backAlpha };
+            { A = backAlpha };
 
             var fontMagickColor = new MagickColor(settings.FontColor)
-                { A = fontAlpha };
+            { A = fontAlpha };
 
             var drawables = new Drawables()
                 // Draw rounded rectangle background

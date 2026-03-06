@@ -1,10 +1,10 @@
-﻿using System.Net.Http.Headers;
+﻿using LukeHagar.PlexAPI.SDK.Models.Requests;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Web;
-using LukeHagar.PlexAPI.SDK.Models.Requests;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Yamoh.Domain.Maintainerr;
 using Yamoh.Domain.Plex;
 using Yamoh.Infrastructure.Configuration;
@@ -116,7 +116,7 @@ public class PlexClient
     }
 
     // The SDK implementation was broken when this was originally developed
-    public async Task<GetMetadataChildrenResponseBody?> GetMetadataChildrenAsync(int ratingKey)
+    public async Task<GetMetadataChildrenResponseBody?> GetMetadataChildrenAsync(string ratingKey)
     {
         // Build full URL
         var urlStub = $"/library/metadata/{ratingKey}/children";
@@ -156,7 +156,7 @@ public class PlexClient
         }
     }
 
-    public async Task<bool> RemoveLabelKeyFromItem(long librarySectionId, int plexId, MaintainerrPlexDataType type,
+    public async Task<bool> RemoveLabelKeyFromItem(long librarySectionId, int plexId, MaintainerrDataType type,
         string labelTag)
     {
         // PUT http://{ip_address}:32400/library/sections/{library_id}/all?type=1&id={movie_id}&includeExternalMedia={include_external_media}&{parameter_values}&X-Plex-Token={plex_token}
@@ -179,7 +179,12 @@ public class PlexClient
         }
     }
 
-    public async Task<bool> RemoveKometaLabelFromItem(long librarySectionId, int plexId, MaintainerrPlexDataType type)
+    public Task<bool> RemoveKometaLabelFromItem(long librarySectionId, string mediaServerId, MaintainerrDataType type) =>
+        !int.TryParse(mediaServerId, out var id) ?
+            throw new ArgumentException($"MediaServerId '{mediaServerId}' is not a valid Plex ID", nameof(mediaServerId)) :
+            RemoveKometaLabelFromItem(librarySectionId, id, type);
+
+    public async Task<bool> RemoveKometaLabelFromItem(long librarySectionId, int plexId, MaintainerrDataType type)
     {
         if (_overlayBehaviorConfiguration.ManageKometaOverlayLabel)
             return await RemoveLabelKeyFromItem(librarySectionId, plexId, type, KometaOverlayLabel);
@@ -194,7 +199,11 @@ public class PlexClient
             x.Tag != null && x.Tag.Equals(KometaOverlayLabel, StringComparison.OrdinalIgnoreCase));
     }
 
-    public async Task<PlexMetadataResponse?> GetPlexCollectionsAsync(int librarySectionId)
+    public Task<bool> HasKometaOverlay(string mediaServerId) => !int.TryParse(mediaServerId, out var id) ?
+        throw new ArgumentException($"MediaServerId '{mediaServerId}' is not a valid Plex ID", nameof(mediaServerId)) :
+        HasKometaOverlay(id);
+
+    public async Task<PlexMetadataResponse?> GetPlexCollectionsAsync(string? librarySectionId)
     {
         var urlStub = $"/library/sections/{librarySectionId}/collections";
         var fullUrl = BuildPlexUrl(urlStub);
@@ -238,7 +247,7 @@ public class PlexClient
         }
     }
 
-    public async Task<bool> PutPlexCollectionItemAfter(int plexCollectionRatingKey, int plexId, int moveAfterId)
+    public async Task<bool> PutPlexCollectionItemAfter(int plexCollectionRatingKey, string plexId, string moveAfterId)
     {
         var urlStub = $"/library/collections/{plexCollectionRatingKey}/items/{plexId}/move?after={moveAfterId}";
         var fullUrl = BuildPlexUrl(urlStub);

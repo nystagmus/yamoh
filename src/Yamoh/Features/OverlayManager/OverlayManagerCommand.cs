@@ -43,7 +43,7 @@ public class OverlayManagerCommand(
         // Restore only option
         if (await RestoreOnly()) return;
 
-        var collections = await maintainerrClient.GetCollections();
+        var collections = await maintainerrClient.GetCollectionsAsync();
 
         if (collections.Count == 0)
         {
@@ -95,7 +95,7 @@ public class OverlayManagerCommand(
         logger.LogInformation("Overlay operations completed. Stats: {Stats}", stats);
     }
 
-    private async Task<bool> ReorderCollection(List<PlexMetadataBuilderItem> items, MaintainerrCollection collection,
+    private async Task<bool> ReorderCollection(List<PlexMetadataBuilderItem> items, IMaintainerrCollectionResponse collection,
         OverlayManagerCommandStats stats, CancellationToken cancellationToken)
     {
         if (!this._overlayBehaviorConfiguration.SortPlexCollections || cancellationToken.IsCancellationRequested)
@@ -133,9 +133,9 @@ public class OverlayManagerCommand(
         }
 
         // only work with the items in the collection
-        var collectionIds = collection.Media?.Select(x => x.PlexId).ToList();
+        var collectionIds = collection.Media?.Select(x => x.MediaServerId).ToList();
         if (collectionIds == null || collectionIds.Count == 0) return false;
-        var collectionItems = items.Where(x => collectionIds.Contains(x.PlexId)).ToList();
+        var collectionItems = items.Where(x => collectionIds.Contains(x.PlexId.ToString())).ToList();
 
         var sortedItems = collectionItems.OrderBy(x => x.ExpirationDate).ToList();
 
@@ -166,13 +166,13 @@ public class OverlayManagerCommand(
         stats.SortedCollections.Add(
             !string.IsNullOrWhiteSpace(collection.Title)
                 ? collection.Title
-                : collection.PlexId != 0
-                    ? $"Collection {collection.PlexId}"
+                : collection.MediaServerId is not null
+                    ? $"Collection {collection.MediaServerId}"
                     : "Unknown Collection");
         return true;
     }
 
-    private bool CanProcessCollection(MaintainerrCollection collection)
+    private bool CanProcessCollection(IMaintainerrCollectionResponse collection)
     {
         if (!collection.IsActive)
         {
@@ -202,7 +202,7 @@ public class OverlayManagerCommand(
 
     private async Task<bool> ProcessItem(
         List<PlexMetadataBuilderItem> items,
-        MaintainerrCollection collection,
+        IMaintainerrCollectionResponse collection,
         OverlayManagerCommandStats stats,
         CancellationToken cancellationToken)
     {
@@ -222,16 +222,12 @@ public class OverlayManagerCommand(
 
             var state = overlayStateManager.GetByPlexId(item.PlexId);
 
-            state ??= new OverlayStateItem
-            {
-                PlexId = item.PlexId
-            };
+            state ??= OverlayStateItem.Create(item.PlexId, item.ParentPlexId);
 
             state.FriendlyTitle = item.FriendlyTitle;
             state.LibrarySectionId = item.LibraryId;
             state.MaintainerrPlexType = item.DataType;
             state.IsChild = item.IsChild;
-            state.ParentPlexId = item.ParentPlexId;
 
             var overlayText = this._overlayConfiguration.GetOverlayText(item.ExpirationDate);
             var overlayTextChanged = !string.Equals(overlayText, state.OverlayText, StringComparison.Ordinal);
@@ -330,7 +326,7 @@ public class OverlayManagerCommand(
         return true;
     }
 
-    private List<MaintainerrCollection> FilterMaintainerrCollections(List<MaintainerrCollection> collections)
+    private List<IMaintainerrCollectionResponse> FilterMaintainerrCollections(List<IMaintainerrCollectionResponse> collections)
     {
         var filter = this._overlayBehaviorConfiguration.MaintainerrCollectionsFilter;
 
@@ -395,14 +391,18 @@ public class OverlayManagerCommand(
         return true;
     }
 
-    private async Task<int> RestoreOriginalPostersMissingFromMaintainerr(List<MaintainerrCollection> collections)
+    private async Task<int> RestoreOriginalPostersMissingFromMaintainerr(List<IMaintainerrCollectionResponse> collections)
     {
         var count = 0;
 
         try
         {
             // Get all PlexIds currently in Maintainerr
-            var currentPlexIds = collections.SelectMany(c => c.Media ?? []).Select(m => m.PlexId).ToHashSet();
+            var currentPlexIds = collections
+                .SelectMany(c => c.Media ?? [])
+                .Select(m => m.MediaServerId)
+                .OfType<string>()
+                .ToHashSet();
 
             // Restore overlays for items no longer in Maintainerr but still in Plex
             var pendingRestores = overlayStateManager.GetNeedsRestoresMissingFromList(currentPlexIds);
