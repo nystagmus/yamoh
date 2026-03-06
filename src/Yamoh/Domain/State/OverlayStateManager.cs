@@ -29,14 +29,20 @@ namespace Yamoh.Domain.State
         public OverlayStateItem? GetByPlexId(string mediaServerId) =>
             int.TryParse(mediaServerId, out var id)
                 ? this._collection.FindById(id)
-                : null;
+                : throw new ArgumentException($"MediaServerId {mediaServerId} is not a valid Id",  nameof(mediaServerId));
 
         public IEnumerable<OverlayStateItem> GetAll() => this._collection.FindAll();
 
         public void Remove(string mediaServerId)
         {
             if (int.TryParse(mediaServerId, out var id))
+            {
                 this._collection.Delete(id);
+            }
+            else
+            {
+                throw new ArgumentException($"MediaServerId {mediaServerId} is not a valid Id",  nameof(mediaServerId));
+            }
         }
 
         public void Remove(int plexId)

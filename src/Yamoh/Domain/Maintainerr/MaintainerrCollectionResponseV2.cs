@@ -6,7 +6,6 @@ public class MaintainerrCollectionResponseV2 : IMaintainerrCollectionResponse
 {
     public int Id { get; set; }
     public string? PlexId { get; set; }
-    [JsonPropertyName("plexId")]
     public string? MediaServerId => PlexId;
     public string? MediaServerType { get; set; }
     public string? LibraryId { get; set; }
