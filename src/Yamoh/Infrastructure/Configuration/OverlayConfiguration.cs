@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Humanizer;
-using Humanizer.Localisation;
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.ImageProcessing;
 
