@@ -182,7 +182,7 @@ public class OverlayManagerCommand(
             return false;
         }
 
-        if (collection.DeleteAfterDays <= 0)
+        if (collection.DeleteAfterDays is null or <= 0)
         {
             logger.LogInformation(
                 "Collection {CollectionTitle} does not have a 'Delete after days' value set. Skipping collection..",

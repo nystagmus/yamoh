@@ -5,9 +5,12 @@ using System.Text.Json.Serialization;
 public class MaintainerrCollectionResponseV2 : IMaintainerrCollectionResponse
 {
     public int Id { get; set; }
-    public string? PlexId { get; set; }
-    public string? MediaServerId => PlexId;
+    public int PlexId { get; set; }
+    public string? MediaServerId => PlexId.ToString();
     public string? MediaServerType { get; set; }
+    [JsonPropertyName("libraryId")]
+    public int LibraryIdRaw { get; set; }
+    [JsonIgnore]
     public string? LibraryId { get; set; }
     public string? Title { get; set; }
     public string? Description { get; set; }
@@ -24,8 +27,9 @@ public class MaintainerrCollectionResponseV2 : IMaintainerrCollectionResponse
         4 => MaintainerrDataType.Episodes,
         _ => MaintainerrDataType.Unknown
     };
+
     [JsonPropertyName("media")]
-    public List<MaintainerrMediaResponseV2>? Media { get; set; }
+    public List<MaintainerrMediaResponseV2>? Media { get; set; } = [];
 
     // Satisfy the interface without affecting deserialization
     [JsonIgnore]
