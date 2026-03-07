@@ -319,6 +319,10 @@ Example structure:
 | Schedule:OverlayManagerCronSchedule | SCHEDULE__OVERLAYMANAGERCRONSCHEDULE | "30 * * * *" | Cron schedule for overlay manager.|
 | Logging:MinimumLevel:Default                    | LOGGING__MINIMUMLEVEL__DEFAULT                         | Information                  | Default minimum logging level.    |
 
+## AI Disclaimer
+
+This is a side project that I'm using to address a personal need. I am also using it to experiment with AI assisted coding. However, the majority of the code is written and tested by myself. I have used CoPilot and lately Claude for code review, sanity checking, and a second set of eyes. Any contributions to this project made by AI tools has been verified by a human (me, for now). 
+
 ## Contributing
 Pull requests and issues are welcome! Please see `.github/ISSUE_TEMPLATE` for bug reports.
 
