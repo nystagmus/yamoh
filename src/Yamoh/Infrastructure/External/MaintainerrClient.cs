@@ -15,6 +15,7 @@ public class MaintainerrClient(
     private readonly YamohConfiguration _config = config.Value;
     private readonly HttpClient _httpClient = clientFactory.CreateClient("YAMOH");
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly Version _overlayDataMinVersion = new(3, 4, 0);
     private Version? _cachedVersion;
 
     public async Task<Version?> GetVersionAsync()
@@ -46,12 +47,21 @@ public class MaintainerrClient(
     {
         try
         {
-            var url = this._config.MaintainerrUrl.TrimEnd('/') + "/api/collections";
             var version = await GetVersionAsync();
 
-            return version?.Major >= 3
-                ? await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV3>(url)
-                : await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV2>(url);
+            var baseUrl = this._config.MaintainerrUrl.TrimEnd('/');
+
+            if (version?.Major >= 3)
+            {
+                var collectionsUrl = baseUrl + "/api/collections";
+                if (version >= _overlayDataMinVersion)
+                {
+                    return await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV3>(baseUrl + "/api/collections/overlay-data");
+                }
+                return await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV3>(collectionsUrl);
+            }
+
+            return await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV2>(baseUrl + "/api/collections");
         }
         catch (Exception ex)
         {
