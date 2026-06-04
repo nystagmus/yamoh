@@ -46,12 +46,15 @@ public class MaintainerrClient(
     {
         try
         {
-            var url = this._config.MaintainerrUrl.TrimEnd('/') + "/api/collections";
             var version = await GetVersionAsync();
 
-            return version?.Major >= 3
-                ? await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV3>(url)
-                : await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV2>(url);
+            if (version?.Major >= 3)
+            {
+                var overlayUrl = this._config.MaintainerrUrl.TrimEnd('/') + "/api/collections/overlay-data";
+                return await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV3>(overlayUrl);
+            }
+            var url = this._config.MaintainerrUrl.TrimEnd('/') + "/api/collections";
+            return await GetMaintainerrCollectionResponseListAsync<MaintainerrCollectionResponseV2>(url);
         }
         catch (Exception ex)
         {
