@@ -7,7 +7,7 @@ public class MaintainerrMediaResponseV2 : IMaintainerrMediaResponse
     public string? MediaServerId => PlexId.ToString();
     public int PlexId { get; set; }
     public int TmdbId { get; set; }
-    public DateTime AddDate { get; set; }
+    public DateTimeOffset AddDate { get; set; }
     public string? ImagePath { get; set; }
     public bool IsManual { get; set; }
 }

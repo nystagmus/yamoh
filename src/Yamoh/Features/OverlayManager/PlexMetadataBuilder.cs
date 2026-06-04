@@ -333,7 +333,7 @@ public class PlexMetadataBuilder(
         int deleteAfterDays,
         List<MaintainerrMediaDto> maintainerrMedia,
         bool asChild,
-        Func<GetMediaMetaDataMediaContainer, string, DateTime, Task<IEnumerable<PlexMetadataBuilderItem>>> buildItems)
+        Func<GetMediaMetaDataMediaContainer, string, DateTimeOffset, Task<IEnumerable<PlexMetadataBuilderItem>>> buildItems)
     {
         if (asChild)
         {
@@ -377,9 +377,8 @@ public class PlexMetadataBuilder(
                 {
                     if (deleteAfterDays > 0)
                     {
-                        var addDate = new DateTimeOffset(maintainerrItem.AddDate);
                         builtItem.HasExpiration = true;
-                        builtItem.ExpirationDate = addDate.AddDays(deleteAfterDays);
+                        builtItem.ExpirationDate = maintainerrItem.AddDate.AddDays(deleteAfterDays);
                     }
 
                     builtItem.KometaLabelExists = await plexClient.HasKometaOverlay(plexId);
@@ -453,7 +452,7 @@ public class PlexMetadataBuilder(
         throw new InvalidOperationException("Plex Library metadata could not be retrieved");
     }
 
-    private record MaintainerrMediaDto(string PlexId, DateTime AddDate);
+    private record MaintainerrMediaDto(string PlexId, DateTimeOffset AddDate);
 
     private record PlexLibraryInfoDto(
         long LibrarySectionId,
