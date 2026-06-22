@@ -413,7 +413,15 @@ public class OverlayManagerCommand(
 
             foreach (var pendingRestore in pendingRestores)
             {
-                if (await RestoreOriginalPoster(pendingRestore, true)) count++;
+                try
+                {
+                    if (await RestoreOriginalPoster(pendingRestore, true)) count++;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error restoring original poster for PlexId {PlexId} - {FriendlyTitle}",
+                        pendingRestore.PlexId, pendingRestore.FriendlyTitle);
+                }
             }
         }
         catch (Exception ex)
@@ -427,7 +435,7 @@ public class OverlayManagerCommand(
     private async Task<bool> RestoreOriginalPoster(OverlayStateItem item, bool deleteFromState)
     {
         // Restore poster
-        if (AssetManager.TryRestorePoster(item.OriginalPosterPath, item.PosterPath))
+        if (assetManager.TryRestorePoster(item.OriginalPosterPath, item.PosterPath))
         {
             // Remove label
             await plexClient.RemoveKometaLabelFromItem(item.LibrarySectionId, item.PlexId, item.MaintainerrPlexType);

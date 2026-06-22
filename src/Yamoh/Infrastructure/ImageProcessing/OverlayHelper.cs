@@ -78,6 +78,7 @@ public class OverlayHelper(IOptions<YamohConfiguration> config, ILogger<OverlayH
             // debugDrawables.Draw(image);
 
             var tempPath = config.Value.TempImageFullPath;
+            Directory.CreateDirectory(tempPath);
             var tempImagePath = Path.Combine(tempPath, $"{plexId}_temp{sourceImage.File.Extension}");
             image.Write(tempImagePath);
             return new AssetPathInfo(new FileInfo(tempImagePath));

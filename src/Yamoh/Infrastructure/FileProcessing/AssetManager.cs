@@ -1,10 +1,11 @@
+using Microsoft.Extensions.Logging;
 using Yamoh.Infrastructure.Extensions;
 using Yamoh.Infrastructure.External;
 using static Yamoh.Infrastructure.FileProcessing.AssetConstants;
 
 namespace Yamoh.Infrastructure.FileProcessing;
 
-public class AssetManager(PlexClient plexClient)
+public class AssetManager(PlexClient plexClient, ILogger<AssetManager> logger)
 {
     public static bool TryBackupPoster(string sourcePath, string backupPath)
     {
@@ -17,7 +18,7 @@ public class AssetManager(PlexClient plexClient)
         return true;
     }
 
-    public static bool TryRestorePoster(string backupPath, string targetPath)
+    public bool TryRestorePoster(string backupPath, string targetPath)
     {
         if (!File.Exists(backupPath))
         {
@@ -25,7 +26,19 @@ public class AssetManager(PlexClient plexClient)
         }
 
         File.Copy(backupPath, targetPath, overwrite: true);
-        File.Delete(backupPath);
+
+        try
+        {
+            File.Delete(backupPath);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex,
+                "Restored poster to {TargetPath} but could not delete backup file {BackupPath}. " +
+                "This is likely a permissions issue — check that the backup directory is owned by PUID.",
+                targetPath, backupPath);
+        }
+
         return true;
     }
 
